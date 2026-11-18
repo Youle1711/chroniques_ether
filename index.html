@@ -1,0 +1,2926 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chroniques de l'Éther - TCG v16</title>
+    <style>
+        :root {
+            --bg-dark: #12141d;
+            --bg-panel: #1e2130;
+            --bg-card: #272b3f;
+            --text-main: #f0f2f8;
+            --text-muted: #9aa0b8;
+            --accent: #6c5ce7;
+            --accent-hover: #8072f0;
+            --ether: #00cec9;
+            
+            --c-commun: #95a5a6;
+            --c-uncommun: #2ecc71;
+            --c-rare: #3498db;
+            --c-epique: #9b59b6;
+            --c-legendaire: #f1c40f;
+            --c-mystique: #ff4757;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        #bg-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        header, nav, main {
+            position: relative;
+            z-index: 1;
+        }
+
+        header {
+            background-color: rgba(24, 27, 40, 0.85);
+            backdrop-filter: blur(10px);
+            padding: 14px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid rgba(255,255,255,0.08);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .game-title {
+            font-size: 1.35rem;
+            font-weight: 900;
+            letter-spacing: 1px;
+            background: linear-gradient(90deg, #a29bfe, #00cec9);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stats-bar {
+            display: flex;
+            gap: 14px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .stat-box {
+            background: rgba(39, 43, 63, 0.88);
+            padding: 8px 14px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 700;
+            font-size: 0.92rem;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .stat-ether { color: var(--ether); }
+        .stat-booster { color: #ffeaa7; }
+        .timer-badge {
+            font-size: 0.85rem;
+            background: rgba(0,0,0,0.4);
+            padding: 3px 9px;
+            border-radius: 6px;
+            color: #00cec9;
+            font-variant-numeric: tabular-nums;
+        }
+
+        nav {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px;
+            background: rgba(18, 20, 29, 0.78);
+            backdrop-filter: blur(8px);
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            background: rgba(30, 33, 48, 0.9);
+            color: var(--text-muted);
+            border: 1px solid rgba(255,255,255,0.08);
+            padding: 9px 18px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tab-btn:hover { background: var(--bg-card); color: var(--text-main); }
+        .tab-btn.active {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent-hover);
+            box-shadow: 0 0 15px rgba(108, 92, 231, 0.5);
+        }
+
+        main {
+            flex: 1;
+            padding: 20px;
+            max-width: 1200px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .section { display: none; }
+        .section.active { display: block; }
+
+        .booster-selector-bar {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+
+        .pack-type-card {
+            background: rgba(30, 33, 48, 0.88);
+            backdrop-filter: blur(6px);
+            border: 2px solid #353b54;
+            border-radius: 12px;
+            padding: 12px 20px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+            min-width: 220px;
+        }
+
+        .pack-type-card.selected {
+            border-color: var(--ether);
+            background: rgba(0, 206, 201, 0.16);
+            box-shadow: 0 0 18px rgba(0, 206, 201, 0.35);
+        }
+
+        .booster-zone {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 420px;
+            text-align: center;
+        }
+
+        .pack-visual {
+            width: 225px;
+            height: 320px;
+            background: linear-gradient(135deg, #2c3e50, #6c5ce7, #00cec9);
+            border-radius: 16px;
+            border: 3px solid #ffeaa7;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 15px 35px rgba(108, 92, 231, 0.45);
+            transition: transform 0.25s, box-shadow 0.25s;
+            position: relative;
+            overflow: hidden;
+            padding: 15px;
+        }
+
+        .pack-visual::before {
+            content: "✂ - - - - - - - - - - - -";
+            position: absolute;
+            top: 38px;
+            left: 0;
+            width: 100%;
+            font-size: 0.72rem;
+            letter-spacing: 2px;
+            color: rgba(255,255,255,0.65);
+            border-bottom: 2px dashed rgba(255,255,255,0.45);
+            padding-bottom: 4px;
+        }
+
+        .pack-visual.pack-astral {
+            background: linear-gradient(135deg, #1a0b2e, #b829ea, #ff007f);
+            border-color: #00f3ff;
+            box-shadow: 0 15px 35px rgba(184, 41, 234, 0.5);
+        }
+
+        .pack-visual:hover:not(.disabled) {
+            transform: translateY(-8px) scale(1.03);
+            box-shadow: 0 20px 45px rgba(0, 206, 201, 0.65);
+        }
+
+        .pack-visual.disabled {
+            filter: grayscale(1);
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pack-icon { font-size: 4rem; margin-bottom: 10px; margin-top: 15px; }
+        .pack-label { font-size: 1.2rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+        .pack-sub { font-size: 0.85rem; opacity: 0.9; margin-top: 6px; }
+
+        .multi-open-bar {
+            display: flex;
+            gap: 12px;
+            margin-top: 22px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn-multi {
+            background: var(--accent);
+            color: white;
+            border: 1px solid var(--accent-hover);
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: 800;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: transform 0.15s, background 0.15s, opacity 0.15s;
+        }
+
+        .btn-multi:hover:not(:disabled) {
+            background: var(--accent-hover);
+            transform: translateY(-2px);
+        }
+
+        .btn-multi:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        #opening-stage {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle at center, rgba(28, 32, 54, 0.96) 0%, rgba(10, 12, 18, 0.98) 100%);
+            backdrop-filter: blur(12px);
+            z-index: 200;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        #opening-stage.active {
+            display: flex;
+            animation: fadeInStage 0.25s ease-out;
+        }
+
+        @keyframes fadeInStage {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        #tear-flash {
+            position: fixed;
+            inset: 0;
+            background: white;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 250;
+        }
+
+        .flash-bang {
+            animation: flashAnim 0.55s ease-out forwards;
+        }
+
+        @keyframes flashAnim {
+            0% { opacity: 0.95; }
+            100% { opacity: 0; }
+        }
+
+        .tear-pack-wrapper {
+            position: relative;
+            width: 240px;
+            height: 340px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .tear-top {
+            width: 240px;
+            height: 62px;
+            background: linear-gradient(135deg, #6c5ce7, #00cec9);
+            border: 3px solid #ffeaa7;
+            border-bottom: 2px dashed #ffffff;
+            border-radius: 16px 16px 4px 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 0.85rem;
+            letter-spacing: 2px;
+            color: #fff;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+            z-index: 2;
+            transform-origin: left bottom;
+            transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.45s;
+        }
+
+        .tear-bottom {
+            width: 240px;
+            height: 278px;
+            background: linear-gradient(135deg, #2c3e50, #6c5ce7, #00cec9);
+            border: 3px solid #ffeaa7;
+            border-top: none;
+            border-radius: 4px 4px 16px 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 20px 50px rgba(108, 92, 231, 0.6);
+            transition: transform 0.5s ease-in, opacity 0.5s;
+        }
+
+        .tear-pack-wrapper.astral-theme .tear-top,
+        .tear-pack-wrapper.astral-theme .tear-bottom {
+            background: linear-gradient(135deg, #1a0b2e, #b829ea, #ff007f);
+            border-color: #00f3ff;
+        }
+
+        .tear-pack-wrapper.shaking {
+            animation: packShake 0.45s ease-in-out;
+        }
+
+        @keyframes packShake {
+            0%, 100% { transform: rotate(0deg) scale(1); }
+            20% { transform: rotate(-6deg) scale(1.05); }
+            40% { transform: rotate(6deg) scale(1.08); }
+            60% { transform: rotate(-4deg) scale(1.06); }
+            80% { transform: rotate(4deg) scale(1.04); }
+        }
+
+        .tear-pack-wrapper.ripped .tear-top {
+            transform: translate(140px, -90px) rotate(38deg);
+            opacity: 0;
+        }
+
+        .tear-pack-wrapper.ripped .tear-bottom {
+            transform: translateY(160px) scale(0.85);
+            opacity: 0;
+        }
+
+        .stack-stage {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            max-width: 420px;
+            perspective: 1200px;
+        }
+
+        .stack-counter {
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--ether);
+            margin-bottom: 14px;
+            background: rgba(0,0,0,0.45);
+            padding: 6px 16px;
+            border-radius: 20px;
+            border: 1px solid rgba(0, 206, 201, 0.3);
+        }
+
+        .flip-card-container {
+            width: 265px;
+            height: 375px;
+            position: relative;
+            cursor: pointer;
+            transform-style: preserve-3d;
+            transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.35s;
+        }
+
+        .flip-card-container.flipped {
+            transform: rotateY(180deg);
+        }
+
+        .flip-card-container.slide-out {
+            transform: rotateY(180deg) translateX(-180px) rotateZ(-14deg);
+            opacity: 0;
+        }
+
+        .card-face {
+            position: absolute;
+            inset: 0;
+            backface-visibility: hidden;
+            border-radius: 16px;
+        }
+
+        .card-back {
+            background: radial-gradient(circle at center, #302b63, #24243e, #0f0c29);
+            border: 4px solid #ffeaa7;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.7);
+        }
+
+        .card-back-emblem {
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            border: 3px solid var(--ether);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3.2rem;
+            background: rgba(0, 206, 201, 0.12);
+            box-shadow: 0 0 25px rgba(0, 206, 201, 0.5);
+            animation: pulseEmblem 2s infinite ease-in-out;
+        }
+
+        @keyframes pulseEmblem {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+        }
+
+        .glow-hint-Rare .card-back { box-shadow: 0 0 35px rgba(52, 152, 219, 0.85); border-color: #3498db; }
+        .glow-hint-Epique .card-back { box-shadow: 0 0 42px rgba(155, 89, 182, 0.95); border-color: #9b59b6; }
+        .glow-hint-Legendaire .card-back { box-shadow: 0 0 55px rgba(241, 196, 15, 1); border-color: #f1c40f; }
+        .glow-hint-Mystique .card-back {
+            border-color: #ff4757;
+            animation: chromaticGlow 2s infinite linear;
+        }
+
+        .card-front {
+            transform: rotateY(180deg);
+            display: flex;
+        }
+
+        .card-front .card {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            animation: none;
+        }
+
+        .stage-hint {
+            margin-top: 18px;
+            font-size: 0.92rem;
+            color: var(--text-muted);
+            font-weight: 700;
+        }
+
+        .stage-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 18px;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 18px;
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        .card {
+            background: rgba(34, 38, 56, 0.94);
+            backdrop-filter: blur(6px);
+            border-radius: 14px;
+            padding: 12px;
+            border: 3px solid var(--c-commun);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 295px;
+            position: relative;
+            transition: transform 0.2s, box-shadow 0.2s;
+            animation: popIn 0.35s ease-out forwards;
+            overflow: visible;
+        }
+
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.88) translateY(15px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .card:hover { transform: translateY(-6px); z-index: 5; }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .card-art {
+            height: 118px;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 8px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.12);
+        }
+
+        .card-art svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .card-name {
+            font-size: 0.98rem;
+            font-weight: 800;
+            margin-bottom: 2px;
+            color: var(--text-main);
+        }
+
+        .card-meta {
+            font-size: 0.74rem;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .card-desc {
+            font-size: 0.78rem;
+            color: var(--text-main);
+            opacity: 0.9;
+            background: rgba(0,0,0,0.3);
+            padding: 6px 8px;
+            border-radius: 6px;
+            line-height: 1.3;
+        }
+
+        .card.is-foil::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: 11px;
+            background: linear-gradient(
+                125deg,
+                transparent 20%,
+                rgba(255, 255, 255, 0.38) 45%,
+                rgba(0, 255, 242, 0.35) 50%,
+                rgba(255, 255, 255, 0.38) 55%,
+                transparent 80%
+            );
+            background-size: 250% 250%;
+            animation: foilSweep 3.2s infinite linear;
+            pointer-events: none;
+        }
+
+        @keyframes foilSweep {
+            0% { background-position: 200% 0%; }
+            100% { background-position: -200% 0%; }
+        }
+
+        .badge-foil {
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(90deg, #00cec9, #fdcb6e);
+            color: #12141d;
+            font-size: 0.68rem;
+            font-weight: 900;
+            padding: 2px 8px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+            z-index: 3;
+            white-space: nowrap;
+        }
+
+        .card.is-chromatic {
+            border-width: 3px;
+            animation: popIn 0.35s ease-out forwards, chromaticGlow 4s infinite linear;
+        }
+
+        @keyframes chromaticGlow {
+            0%   { border-color: #ff4757; box-shadow: 0 0 22px rgba(255, 71, 87, 0.75); }
+            25%  { border-color: #f1c40f; box-shadow: 0 0 24px rgba(241, 196, 15, 0.75); }
+            50%  { border-color: #2ecc71; box-shadow: 0 0 22px rgba(46, 204, 113, 0.75); }
+            75%  { border-color: #00cec9; box-shadow: 0 0 24px rgba(0, 206, 201, 0.75); }
+            100% { border-color: #ff4757; box-shadow: 0 0 22px rgba(255, 71, 87, 0.75); }
+        }
+
+        .badge-new {
+            position: absolute;
+            top: -10px;
+            left: -8px;
+            background: #ff4757;
+            color: white;
+            font-size: 0.68rem;
+            font-weight: 800;
+            padding: 3px 8px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(255,71,87,0.6);
+            z-index: 3;
+        }
+
+        .badge-qty {
+            position: absolute;
+            top: -10px;
+            right: -8px;
+            background: var(--accent);
+            color: white;
+            font-size: 0.78rem;
+            font-weight: 800;
+            padding: 3px 9px;
+            border-radius: 12px;
+            z-index: 3;
+        }
+
+        .rarity-Commun { border-color: var(--c-commun); }
+        .rarity-Commun .rarity-tag { color: var(--c-commun); }
+
+        .rarity-UnCommun { border-color: var(--c-uncommun); }
+        .rarity-UnCommun .rarity-tag { color: var(--c-uncommun); }
+
+        .rarity-Rare { border-color: var(--c-rare); box-shadow: 0 0 12px rgba(52, 152, 219, 0.3); }
+        .rarity-Rare .rarity-tag { color: var(--c-rare); }
+
+        .rarity-Epique { border-color: var(--c-epique); box-shadow: 0 0 16px rgba(155, 89, 182, 0.4); }
+        .rarity-Epique .rarity-tag { color: var(--c-epique); }
+
+        .rarity-Legendaire { border-color: var(--c-legendaire); }
+        .rarity-Legendaire .rarity-tag { color: var(--c-legendaire); }
+
+        .rarity-Mystique {
+            border-color: var(--c-mystique);
+            background: linear-gradient(145deg, #272b3f, #3d1b2c);
+        }
+        .rarity-Mystique .rarity-tag { color: var(--c-mystique); }
+
+        .card.unowned {
+            opacity: 0.35;
+            filter: grayscale(1);
+            border-style: dashed;
+        }
+
+        .card-sell-bar {
+            display: flex;
+            gap: 5px;
+            margin-top: 8px;
+        }
+
+        .btn-sell-unit {
+            flex: 1;
+            background: rgba(0, 206, 201, 0.18);
+            border: 1px solid var(--ether);
+            color: var(--ether);
+            font-size: 0.72rem;
+            font-weight: 800;
+            padding: 5px 4px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .btn-sell-unit:hover:not(:disabled) {
+            background: var(--ether);
+            color: #12141d;
+        }
+
+        .btn-sell-unit:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+            border-color: #555;
+            color: #888;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(26, 29, 44, 0.88);
+            backdrop-filter: blur(8px);
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 12px;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+
+        .filter-btn {
+            background: rgba(30, 33, 48, 0.9);
+            color: var(--text-muted);
+            border: 1px solid #353b54;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .filter-btn.active {
+            background: var(--ether);
+            color: #12141d;
+            border-color: var(--ether);
+        }
+
+        .btn-action {
+            background: var(--ether);
+            color: #12141d;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: transform 0.15s, opacity 0.15s;
+        }
+
+        .btn-action:hover:not(:disabled) { opacity: 0.9; transform: scale(1.02); }
+        .btn-action:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .trade-arena {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 20px;
+            align-items: stretch;
+        }
+
+        @media (max-width: 850px) {
+            .trade-arena { grid-template-columns: 1fr; }
+        }
+
+        .trade-box {
+            background: rgba(26, 29, 44, 0.9);
+            backdrop-filter: blur(8px);
+            border: 2px solid #353b54;
+            border-radius: 14px;
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .trade-box.locked {
+            border-color: #2ecc71;
+            box-shadow: 0 0 18px rgba(46, 204, 113, 0.25);
+        }
+
+        .trade-slot-list {
+            min-height: 150px;
+            background: rgba(0,0,0,0.28);
+            border-radius: 10px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .trade-item-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-card);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.88rem;
+            font-weight: 700;
+        }
+
+        .shop-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+            gap: 20px;
+        }
+
+        .shop-item {
+            background: rgba(26, 29, 44, 0.9);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 14px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 14px;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .shop-item.active-theme-card {
+            border-color: var(--ether);
+            box-shadow: 0 0 20px rgba(0, 206, 201, 0.3);
+        }
+
+        .color-swatches {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .swatch {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid white;
+            transition: transform 0.15s;
+        }
+        .swatch:hover { transform: scale(1.15); }
+
+        .missions-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 850px) {
+            .missions-container { grid-template-columns: 1fr; }
+        }
+
+        .mission-panel {
+            background: rgba(26, 29, 44, 0.9);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 14px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .mission-card {
+            background: var(--bg-card);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .mission-info h4 { font-size: 0.95rem; margin-bottom: 3px; }
+        .mission-info p { font-size: 0.8rem; color: var(--text-muted); }
+
+        .progress-bar-bg {
+            width: 100%;
+            height: 6px;
+            background: rgba(0,0,0,0.4);
+            border-radius: 3px;
+            margin-top: 6px;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background: var(--ether);
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .cal-day {
+            background: var(--bg-card);
+            border: 2px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            padding: 10px 6px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 90px;
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.15s;
+        }
+
+        .cal-day.claimed {
+            opacity: 0.5;
+            background: rgba(18, 20, 29, 0.7);
+            border-color: #333;
+            cursor: default;
+        }
+
+        .cal-day.claimable {
+            border-color: var(--ether);
+            background: rgba(0, 206, 201, 0.15);
+            animation: pulseCal 1.5s infinite;
+        }
+
+        @keyframes pulseCal {
+            0%, 100% { box-shadow: 0 0 10px rgba(0, 206, 201, 0.4); }
+            50% { box-shadow: 0 0 20px rgba(0, 206, 201, 0.8); }
+        }
+
+        .cal-day.mystical-day {
+            border-color: var(--c-mystique);
+            background: linear-gradient(135deg, rgba(255,71,87,0.2), rgba(155,89,182,0.2));
+        }
+
+        .cal-num { font-size: 0.75rem; font-weight: 800; color: var(--text-muted); }
+        .cal-icon { font-size: 1.5rem; margin: 4px 0; }
+        .cal-reward { font-size: 0.7rem; font-weight: 800; color: #ffeaa7; }
+
+        #toast {
+            position: fixed;
+            bottom: 25px;
+            right: 25px;
+            background: var(--bg-panel);
+            border-left: 4px solid var(--ether);
+            color: white;
+            padding: 14px 20px;
+            border-radius: 8px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.6);
+            font-weight: 700;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            z-index: 999;
+        }
+        #toast.show { opacity: 1; }
+    </style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+<div id="tear-flash"></div>
+
+<div id="opening-stage">
+    <div id="tear-step" style="display: flex; flex-direction: column; align-items: center;">
+        <div class="tear-pack-wrapper" id="tear-pack-box">
+            <div class="tear-top">✂ CLIQUEZ POUR DÉCHIRER</div>
+            <div class="tear-bottom">
+                <div class="pack-icon" id="tear-pack-icon">⚔️</div>
+                <div class="pack-label" id="tear-pack-title">Booster Éther</div>
+                <div class="pack-sub">8 Cartes à découvrir</div>
+            </div>
+        </div>
+        <p class="stage-hint">👆 Touchez le booster pour déchirer le haut du paquet !</p>
+    </div>
+
+    <div id="stack-step" class="stack-stage">
+        <div class="stack-counter" id="stack-counter-label">Carte 1 / 8</div>
+        <div class="flip-card-container" id="flip-card-box">
+            <div class="card-face card-back">
+                <div class="card-back-emblem" id="card-back-icon">⚔️</div>
+                <div style="margin-top: 16px; font-weight: 900; letter-spacing: 2px; font-size: 0.9rem; color: #ffeaa7;">CHRONIQUES</div>
+            </div>
+            <div class="card-face card-front" id="card-front-slot"></div>
+        </div>
+        <div class="stage-hint" id="stack-action-hint">👆 Cliquez sur la carte pour la retourner !</div>
+        <div class="stage-actions">
+            <button class="filter-btn" id="btn-skip-stack">⏭️ Tout révéler d'un coup</button>
+        </div>
+    </div>
+</div>
+
+<header>
+    <div class="game-title">⚔️ CHRONIQUES DE L'ÉTHER (v16)</div>
+    <div class="stats-bar">
+        <div class="stat-box stat-booster">
+            <span>📦 Stock : <span id="booster-count">10</span></span>
+            <span class="timer-badge" id="booster-timer">10:00</span>
+        </div>
+        <div class="stat-box stat-ether">
+            <span>💎 <span id="ether-count">200</span> Fragments</span>
+        </div>
+    </div>
+</header>
+
+<nav>
+    <button class="tab-btn active" data-tab="open">🎴 Boosters</button>
+    <button class="tab-btn" data-tab="collection">📖 Collection (<span id="col-progress">0</span>/50)</button>
+    <button class="tab-btn" data-tab="missions">🎯 Missions & Calendrier</button>
+    <button class="tab-btn" data-tab="trade">🤝 Échange</button>
+    <button class="tab-btn" data-tab="shop">🛒 Boutique</button>
+    <button class="tab-btn" data-tab="custom">🎨 Apparence</button>
+</nav>
+
+<main>
+    <section id="tab-open" class="section active">
+        <div class="booster-selector-bar">
+            <div class="pack-type-card selected" data-pack="ether">
+                <div style="font-size: 1.5rem;">⚔️</div>
+                <strong>Booster Éther (Manga)</strong>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">Collection Chroniques de l'Éther</div>
+            </div>
+            <div class="pack-type-card" data-pack="astral">
+                <div style="font-size: 1.5rem;">🌌</div>
+                <strong>Booster Astral (Cyber & Cosmos)</strong>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">Collections Cyber-2088 & Stellaire</div>
+            </div>
+        </div>
+
+        <div class="booster-zone" id="pack-container">
+            <div class="pack-visual" id="pack-btn">
+                <div class="pack-icon" id="pack-visual-icon">⚔️</div>
+                <div class="pack-label" id="pack-visual-title">Booster Éther</div>
+                <div class="pack-sub">8 Cartes • Ouverture Interactive</div>
+            </div>
+
+            <div class="multi-open-bar">
+                <button class="btn-multi" id="btn-open-1">Ouvrir x1 (Animation)</button>
+                <button class="btn-multi" id="btn-open-5">🔥 Ouvrir x5 (40 cartes)</button>
+                <button class="btn-multi" id="btn-open-10">⚡ Ouvrir x10 (80 cartes)</button>
+            </div>
+
+            <p style="margin-top: 15px; color: var(--text-muted); font-size: 0.9rem;">
+                +1 Booster gratuit toutes les <span id="wait-time-label">10:00</span>
+            </p>
+        </div>
+
+        <div id="reveal-area" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <h2 id="reveal-title">🎉 Récapitulatif du Booster :</h2>
+                <button class="btn-action" id="btn-continue-reveal">Continuer</button>
+            </div>
+            <div class="cards-grid" id="revealed-cards"></div>
+        </div>
+    </section>
+
+    <section id="tab-collection" class="section">
+        <div class="toolbar">
+            <div>
+                <strong>Votre Album (50 Cartes • Normales & Brillantes)</strong>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">Impossible de vendre ou d'échanger la dernière carte d'un exemplaire unique.</p>
+            </div>
+            <button class="btn-action" id="recycle-btn">
+                ♻️ Tout recycler en trop (+<span id="recycle-preview">0</span> 💎)
+            </button>
+        </div>
+
+        <div class="filter-bar" id="collection-filter-bar">
+            <button class="filter-btn active" data-filter="ALL">Toutes (50)</button>
+            <button class="filter-btn" data-filter="Manga">⚔️ Chroniques Éther (20)</button>
+            <button class="filter-btn" data-filter="Cyber">🤖 Cyber-Légendes 2088 (15)</button>
+            <button class="filter-btn" data-filter="Cosmos">🌌 Mythologie Stellaire (15)</button>
+            <button class="filter-btn" data-filter="FOIL">✨ Brillantes uniquement</button>
+        </div>
+
+        <div class="cards-grid" id="collection-grid"></div>
+    </section>
+
+    <section id="tab-missions" class="section">
+        <div class="missions-container">
+            <div class="mission-panel">
+                <h3>🎯 Missions Quotidiennes</h3>
+                <div id="daily-missions-list" style="display: flex; flex-direction: column; gap: 10px;"></div>
+
+                <h3 style="margin-top: 15px;">🏆 Missions Hebdomadaires</h3>
+                <div id="weekly-missions-list" style="display: flex; flex-direction: column; gap: 10px;"></div>
+            </div>
+
+            <div class="mission-panel">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3>📅 Calendrier de Connexion (Toutes les 24h)</h3>
+                    <span style="font-size: 0.85rem; color: var(--ether);" id="cal-day-counter">Progression : 0/30 Jours</span>
+                </div>
+                <p style="font-size: 0.82rem; color: var(--text-muted);" id="cal-timer-status">
+                    Récupère une récompense toutes les 24h. Au <strong>30e jour</strong>, gagne un <strong>Booster Mystique Garanti</strong> !
+                </p>
+                <div class="calendar-grid" id="calendar-grid-container"></div>
+            </div>
+        </div>
+    </section>
+
+    <section id="tab-trade" class="section">
+        <div class="toolbar">
+            <div>
+                <strong>🤝 Échange Sécurisé (Salon Vocal Discord)</strong>
+                <p style="font-size: 0.85rem; color: var(--text-muted);">La dernière carte de votre inventaire ne peut pas être échangée.</p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 0.85rem; color: #2ecc71; font-weight: 700;">● En vocal avec :</span>
+                <select id="trade-partner-select" style="background: var(--bg-card); color: white; border: 1px solid #4b5275; padding: 7px 12px; border-radius: 8px; font-weight: 700;">
+                    <option value="Clovis">Clovis (En ligne)</option>
+                    <option value="Kaito_99">Kaito_99 (En ligne)</option>
+                    <option value="SakuraChan">SakuraChan (En ligne)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="trade-arena">
+            <div class="trade-box" id="my-trade-box">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3>📤 Votre offre</h3>
+                    <span id="my-lock-status" style="font-size: 0.8rem; color: #ffeaa7; font-weight: 800;">🔓 Non verrouillé</span>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <select id="my-trade-card-select" style="flex: 1; background: var(--bg-card); color: white; border: 1px solid #4b5275; padding: 8px; border-radius: 8px;"></select>
+                    <button class="btn-action" id="btn-add-trade">+ Ajouter</button>
+                </div>
+                <div class="trade-slot-list" id="my-trade-slots"></div>
+                <button class="btn-action" id="btn-lock-trade" style="background: #f1c40f;">
+                    🔒 Verrouiller mon offre
+                </button>
+            </div>
+
+            <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 15px; padding: 10px;">
+                <div style="font-size: 2.2rem;">⇄</div>
+                <button class="btn-action" id="btn-confirm-trade" disabled style="padding: 14px 20px; font-size: 1rem;">
+                    ✅ Confirmer l'échange
+                </button>
+                <button class="filter-btn" id="btn-reset-trade">Annuler / Vider</button>
+            </div>
+
+            <div class="trade-box" id="partner-trade-box">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3>📥 Offre de <span id="partner-name-label">Clovis</span></h3>
+                    <span id="partner-lock-status" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 800;">⏳ En attente...</span>
+                </div>
+                <p style="font-size: 0.8rem; color: var(--text-muted);">
+                    Dès que vous ajoutez et verrouillez une carte, votre partenaire propose une carte équivalente et verrouille son offre.
+                </p>
+                <div class="trade-slot-list" id="partner-trade-slots"></div>
+            </div>
+        </div>
+    </section>
+
+    <section id="tab-shop" class="section">
+        <h2 style="margin-bottom: 15px;">📦 Packs & Boosters</h2>
+        <div class="shop-grid" style="margin-bottom: 30px;">
+            <div class="shop-item">
+                <div>
+                    <h3>+1 Booster au Stock (8 cartes)</h3>
+                    <p>Ajoute un booster utilisable sur la collection Éther ou Astral.</p>
+                </div>
+                <button class="btn-action" id="btn-buy-standard">Acheter (100 💎)</button>
+            </div>
+            <div class="shop-item">
+                <div>
+                    <h3>Booster Chromatique Garanti</h3>
+                    <p>Ouvre immédiatement un pack avec une carte <strong>Légendaire ou Mystique Chromatique</strong> garantie !</p>
+                </div>
+                <button class="btn-action" id="btn-buy-chromatic">Ouvrir maintenant (500 💎)</button>
+            </div>
+            <div class="shop-item">
+                <div>
+                    <h3>Capacité Max de Boosters (+5)</h3>
+                    <p>Augmente la limite maximale de stockage de vos boosters de +5.</p>
+                    <div class="shop-level" id="max-booster-info">Capacité actuelle : 10 boosters</div>
+                </div>
+                <button class="btn-action" id="btn-upg-max-booster">Améliorer (300 💎)</button>
+            </div>
+        </div>
+
+        <h2 style="margin-bottom: 15px;">⚡ Amélioration du Générateur</h2>
+        <div class="shop-grid">
+            <div class="shop-item">
+                <div>
+                    <h3>Accélérateur de Chrono (-30 sec)</h3>
+                    <p>Réduit le temps d'apparition des boosters gratuits (minimum 3 min).</p>
+                    <div class="shop-level" id="upg-timer-info">Actuel : 10:00</div>
+                </div>
+                <button class="btn-action" id="btn-upg-timer">Améliorer (200 💎)</button>
+            </div>
+        </div>
+    </section>
+
+    <section id="tab-custom" class="section">
+        <h2 style="margin-bottom: 15px;">🎬 Thèmes d'Arrière-Plan Animés</h2>
+        <div class="shop-grid" style="margin-bottom: 30px;">
+            <div class="shop-item" id="theme-card-retrosun">
+                <div>
+                    <h3>🌅 Retro Sun (Animé)</h3>
+                    <p>Grille néon 3D en mouvement continu vers un soleil synthwave pulsant.</p>
+                </div>
+                <button class="btn-action theme-btn" data-theme="retrosun">Activer Retro Sun</button>
+            </div>
+            <div class="shop-item" id="theme-card-fleurs">
+                <div>
+                    <h3>🌸 Pluie de Sakura (Animé)</h3>
+                    <p>Pétales de cerisiers japonais qui tombent et tourbillonnent au vent.</p>
+                </div>
+                <button class="btn-action theme-btn" data-theme="fleurs">Activer Sakura</button>
+            </div>
+            <div class="shop-item" id="theme-card-cyber">
+                <div>
+                    <h3>⚡ Pluie Matrix / Cyber (Animé)</h3>
+                    <p>Flux de données néon vert/cyan et impulsions numériques en direct.</p>
+                </div>
+                <button class="btn-action theme-btn" data-theme="cyber">Activer Cyber</button>
+            </div>
+            <div class="shop-item" id="theme-card-cosmos">
+                <div>
+                    <h3>🌌 Voyage Stellaire (Animé)</h3>
+                    <p>Champ d'étoiles filantes et nébuleuses en déplacement dans l'espace.</p>
+                </div>
+                <button class="btn-action theme-btn" data-theme="cosmos">Activer Cosmos</button>
+            </div>
+            <div class="shop-item" id="theme-card-ether">
+                <div>
+                    <h3>✨ Particules d'Éther (Défaut)</h3>
+                    <p>Orbes lumineuses flottantes sur fond sombre profond.</p>
+                </div>
+                <button class="btn-action theme-btn" data-theme="ether">Activer Éther</button>
+            </div>
+        </div>
+
+        <h2 style="margin-bottom: 15px;">🎨 Palette de Couleurs & Roue Personnalisée</h2>
+        <div class="shop-grid">
+            <div class="shop-item">
+                <div>
+                    <h3>Couleur des Écritures (Textes)</h3>
+                    <p>Choisissez un rond de couleur dans la palette ou sélectionnez n'importe quelle nuance exacte avec le sélecteur circulaire.</p>
+                    <div style="margin-top: 12px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                        <div class="color-swatches" style="margin: 0;">
+                            <div class="swatch text-swatch" style="background: #f0f2f8;" data-color="#f0f2f8" title="Blanc Pur"></div>
+                            <div class="swatch text-swatch" style="background: #ffeaa7;" data-color="#ffeaa7" title="Or Doux"></div>
+                            <div class="swatch text-swatch" style="background: #81ecec;" data-color="#81ecec" title="Cyan Néon"></div>
+                            <div class="swatch text-swatch" style="background: #fab1a0;" data-color="#fab1a0" title="Pêche Sakura"></div>
+                            <div class="swatch text-swatch" style="background: #55efc4;" data-color="#55efc4" title="Menthe Cyber"></div>
+                            <div class="swatch text-swatch" style="background: #ff7675;" data-color="#ff7675" title="Rose Corail"></div>
+                            <div class="swatch text-swatch" style="background: #a29bfe;" data-color="#a29bfe" title="Violet Éther"></div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="color" id="native-text-color-picker" style="width: 44px; height: 44px; border: none; border-radius: 50%; cursor: pointer; background: none; padding: 0;" title="Roue de couleur personnalisée">
+                            <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">Roue personnalisée</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="shop-item">
+                <div>
+                    <h3>Couleur des Rebords de Cartes</h3>
+                    <p>Appliquez un contour coloré parmi la palette de ronds ou utilisez le sélecteur de teinte complet.</p>
+                    <div style="margin-top: 12px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                        <div class="color-swatches" style="margin: 0;">
+                            <div class="swatch border-swatch" style="background: linear-gradient(45deg, #95a5a6, #3498db, #f1c40f);" data-border="default" title="Par Rareté (Défaut)"></div>
+                            <div class="swatch border-swatch" style="background: #ff007f;" data-border="#ff007f" title="Rose Néon"></div>
+                            <div class="swatch border-swatch" style="background: #00f3ff;" data-border="#00f3ff" title="Bleu Électrique"></div>
+                            <div class="swatch border-swatch" style="background: #ffd700;" data-border="#ffd700" title="Or Royal"></div>
+                            <div class="swatch border-swatch" style="background: #ffffff;" data-border="#ffffff" title="Blanc Cristal"></div>
+                            <div class="swatch border-swatch" style="background: #e74c3c;" data-border="#e74c3c" title="Rouge Feu"></div>
+                            <div class="swatch border-swatch" style="background: #2ecc71;" data-border="#2ecc71" title="Vert Émeraude"></div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="color" id="native-border-color-picker" style="width: 44px; height: 44px; border: none; border-radius: 50%; cursor: pointer; background: none; padding: 0;" title="Roue de couleur personnalisée">
+                            <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">Roue personnalisée</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="tab-admin" class="section">
+        <h2 style="margin-bottom: 15px; color: #ff7675;">🛡️ Panel Administrateur & Modération</h2>
+        
+        <div class="shop-grid" style="margin-bottom: 30px;">
+            <div class="shop-item">
+                <div>
+                    <h3>👤 Connexion & Identité Discord</h3>
+                    <p>Simulez ou changez votre compte Discord actuel pour tester les accès admin.</p>
+                    <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+                        <label style="font-size: 0.8rem; color: var(--text-muted);">Nom Discord :</label>
+                        <input type="text" id="admin-login-name" style="background: var(--bg-card); color: white; border: 1px solid #4b5275; padding: 7px; border-radius: 6px;" value="Youle">
+                        <label style="font-size: 0.8rem; color: var(--text-muted);">ID Discord (ex: 365656836747034624) :</label>
+                        <input type="text" id="admin-login-id" style="background: var(--bg-card); color: white; border: 1px solid #4b5275; padding: 7px; border-radius: 6px;" value="365656836747034624">
+                    </div>
+                </div>
+                <button class="btn-action" id="btn-apply-discord-login" style="background: #e74c3c; color: white;">Appliquer l'identité</button>
+            </div>
+
+            <div class="shop-item">
+                <div>
+                    <h3>⚡ Commandes Rapides (Triche / Test)</h3>
+                    <p>Modifiez instantanément vos ressources en jeu pour vos tests.</p>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <button class="btn-action" id="admin-add-gems" style="background: #00cec9; color: #12141d;">💎 Ajouter +1 000 Fragments</button>
+                    <button class="btn-action" id="admin-add-boosters" style="background: #ffeaa7; color: #12141d;">📦 Remplir Stock de Boosters</button>
+                    <button class="btn-action" id="admin-reset-timer" style="background: #6c5ce7; color: white;">⏱️ Réinitialiser le Timer</button>
+                </div>
+            </div>
+        </div>
+
+        <h2 style="margin-bottom: 15px; color: #ff7675;">👥 Gestion de la Liste Blanche Admin</h2>
+        <div class="shop-grid" style="margin-bottom: 30px;">
+            <div class="shop-item">
+                <div>
+                    <h3>Ajouter un Administrateur</h3>
+                    <p>Donnez les accès admin à un ami en entrant son pseudo et son ID Discord.</p>
+                    <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+                        <input type="text" id="new-admin-name" placeholder="Nom Discord (ex: Clovis)" style="background: var(--bg-card); color: white; border: 1px solid #4b5275; padding: 7px; border-radius: 6px;">
+                        <input type="text" id="new-admin-id" placeholder="ID Discord (ex: 123456789)" style="background: var(--bg-card); color: white; border: 1px solid #4b5275; padding: 7px; border-radius: 6px;" autocomplete="off">
+                    </div>
+                </div>
+                <button class="btn-action" id="btn-add-admin" style="background: #2ecc71; color: white;">➕ Ajouter aux Admins</button>
+            </div>
+
+            <div class="shop-item">
+                <div>
+                    <h3>Admins Actuels Autorisés</h3>
+                    <p>Liste des comptes disposant des droits sur ce panel :</p>
+                    <div id="admin-list-container" style="margin-top: 10px; display: flex; flex-direction: column; gap: 6px; max-height: 160px; overflow-y: auto;">
+                        <!-- Rempli dynamiquement -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    </main>
+
+<div id="toast">Notification</div>
+
+<script>
+(function() {
+    const canvas = document.getElementById('bg-canvas');
+    const ctx = canvas.getContext('2d');
+    let width, height;
+    let particles = [];
+    let gridOffset = 0;
+
+    function resizeCanvas() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    function initParticlesForTheme(theme) {
+        particles = [];
+        if (theme === 'fleurs') {
+            for (let i = 0; i < 45; i++) {
+                particles.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    size: 6 + Math.random() * 8,
+                    speedY: 0.8 + Math.random() * 1.5,
+                    speedX: -0.6 + Math.random() * 1.2,
+                    angle: Math.random() * Math.PI * 2,
+                    spin: (Math.random() - 0.5) * 0.04,
+                    color: Math.random() > 0.3 ? '#ff9ff3' : '#feca57'
+                });
+            }
+        } else if (theme === 'cyber') {
+            const cols = Math.floor(width / 24);
+            for (let i = 0; i < cols; i++) {
+                particles.push({
+                    x: i * 24,
+                    y: Math.random() * height,
+                    speedY: 3 + Math.random() * 5,
+                    len: 60 + Math.random() * 120
+                });
+            }
+        } else if (theme === 'cosmos') {
+            for (let i = 0; i < 110; i++) {
+                particles.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    size: 0.8 + Math.random() * 2.2,
+                    speedX: -(0.5 + Math.random() * 2.5),
+                    alpha: 0.3 + Math.random() * 0.7
+                });
+            }
+        } else if (theme === 'ether') {
+            for (let i = 0; i < 55; i++) {
+                particles.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    size: 2 + Math.random() * 4,
+                    speedY: -(0.3 + Math.random() * 0.8),
+                    speedX: (Math.random() - 0.5) * 0.5,
+                    color: Math.random() > 0.5 ? '#00cec9' : '#a29bfe'
+                });
+            }
+        }
+    }
+
+    function animateBackground() {
+        const theme = state.theme || 'ether';
+        ctx.clearRect(0, 0, width, height);
+
+        if (theme === 'retrosun') {
+            const sky = ctx.createLinearGradient(0, 0, 0, height * 0.65);
+            sky.addColorStop(0, '#0f0524');
+            sky.addColorStop(0.5, '#3b0d54');
+            sky.addColorStop(1, '#b81d65');
+            ctx.fillStyle = sky;
+            ctx.fillRect(0, 0, width, height);
+
+            const sunY = height * 0.45;
+            const sunR = Math.min(width, height) * 0.22;
+            const sunGrad = ctx.createLinearGradient(0, sunY - sunR, 0, sunY + sunR);
+            sunGrad.addColorStop(0, '#ffe600');
+            sunGrad.addColorStop(0.5, '#ff6a00');
+            sunGrad.addColorStop(1, '#ff0055');
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(width / 2, sunY, sunR, 0, Math.PI * 2);
+            ctx.fillStyle = sunGrad;
+            ctx.shadowColor = '#ff2a6d';
+            ctx.shadowBlur = 45;
+            ctx.fill();
+            ctx.clip();
+
+            ctx.fillStyle = '#240838';
+            for (let y = sunY; y < sunY + sunR; y += 16) {
+                const stripH = ((y - sunY) / sunR) * 8 + 2;
+                ctx.fillRect(width / 2 - sunR, y, sunR * 2, stripH);
+            }
+            ctx.restore();
+
+            const horizon = height * 0.62;
+            ctx.fillStyle = '#120424';
+            ctx.fillRect(0, horizon, width, height - horizon);
+
+            ctx.strokeStyle = 'rgba(0, 243, 255, 0.45)';
+            ctx.lineWidth = 1.5;
+
+            const centerX = width / 2;
+            for (let i = -18; i <= 18; i++) {
+                ctx.beginPath();
+                ctx.moveTo(centerX + i * 35, horizon);
+                ctx.lineTo(centerX + i * 190, height);
+                ctx.stroke();
+            }
+
+            gridOffset = (gridOffset + 1.2) % 30;
+            for (let z = 0; z < height - horizon; z += 30) {
+                const progress = (z + gridOffset) / (height - horizon);
+                const y = horizon + Math.pow(progress, 1.7) * (height - horizon);
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+
+        } else if (theme === 'fleurs') {
+            const bg = ctx.createLinearGradient(0, 0, width, height);
+            bg.addColorStop(0, '#1f1024');
+            bg.addColorStop(0.5, '#3b1c3d');
+            bg.addColorStop(1, '#181224');
+            ctx.fillStyle = bg;
+            ctx.fillRect(0, 0, width, height);
+
+            particles.forEach(p => {
+                p.y += p.speedY;
+                p.x += p.speedX + Math.sin(p.angle) * 0.6;
+                p.angle += p.spin;
+                if (p.y > height + 20) { p.y = -20; p.x = Math.random() * width; }
+                if (p.x > width + 20) p.x = -20;
+                if (p.x < -20) p.x = width + 20;
+
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                ctx.rotate(p.angle);
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = 0.75;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, p.size, p.size * 0.55, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+
+        } else if (theme === 'cyber') {
+            ctx.fillStyle = '#070b12';
+            ctx.fillRect(0, 0, width, height);
+
+            particles.forEach(p => {
+                p.y += p.speedY;
+                if (p.y - p.len > height) p.y = -20;
+                const grad = ctx.createLinearGradient(0, p.y - p.len, 0, p.y);
+                grad.addColorStop(0, 'rgba(0, 255, 170, 0)');
+                grad.addColorStop(1, 'rgba(0, 255, 170, 0.35)');
+                ctx.strokeStyle = grad;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(p.x, p.y - p.len);
+                ctx.lineTo(p.x, p.y);
+                ctx.stroke();
+            });
+
+        } else if (theme === 'cosmos') {
+            const space = ctx.createRadialGradient(width * 0.5, height * 0.4, 50, width * 0.5, height * 0.5, width);
+            space.addColorStop(0, '#1b1042');
+            space.addColorStop(0.6, '#0d0924');
+            space.addColorStop(1, '#05040f');
+            ctx.fillStyle = space;
+            ctx.fillRect(0, 0, width, height);
+
+            particles.forEach(p => {
+                p.x += p.speedX;
+                if (p.x < 0) { p.x = width; p.y = Math.random() * height; }
+                ctx.fillStyle = 'rgba(255, 255, 255, ' + p.alpha + ')';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+        } else {
+            const etherBg = ctx.createRadialGradient(width / 2, 0, 100, width / 2, height, width);
+            etherBg.addColorStop(0, '#1d223b');
+            etherBg.addColorStop(1, '#10121a');
+            ctx.fillStyle = etherBg;
+            ctx.fillRect(0, 0, width, height);
+
+            particles.forEach(p => {
+                p.y += p.speedY;
+                p.x += p.speedX;
+                if (p.y < -10) { p.y = height + 10; p.x = Math.random() * width; }
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = 0.45;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            });
+        }
+
+        requestAnimationFrame(animateBackground);
+    }
+
+    function generateCardArtwork(card) {
+        const palettes = {
+            "Manga":  { bg1: "#1a103c", bg2: "#4a1942", glow: "#ff4757" },
+            "Cyber":  { bg1: "#071921", bg2: "#0d3b4c", glow: "#00f3ff" },
+            "Cosmos": { bg1: "#0c0726", bg2: "#2c1654", glow: "#f1c40f" }
+        };
+        const p = palettes[card.collection] || palettes["Manga"];
+        const seed = card.id * 37;
+        const cx1 = 40 + (seed % 110);
+        const cy1 = 25 + (seed % 50);
+
+        return '<svg viewBox="0 0 200 110" xmlns="http://www.w3.org/2000/svg">' +
+            '<defs>' +
+                '<linearGradient id="grad-' + card.id + '" x1="0%" y1="0%" x2="100%" y2="100%">' +
+                    '<stop offset="0%" stop-color="' + p.bg1 + '" />' +
+                    '<stop offset="100%" stop-color="' + p.bg2 + '" />' +
+                '</linearGradient>' +
+                '<radialGradient id="aura-' + card.id + '" cx="50%" cy="50%" r="50%">' +
+                    '<stop offset="0%" stop-color="' + p.glow + '" stop-opacity="0.65" />' +
+                    '<stop offset="100%" stop-color="' + p.glow + '" stop-opacity="0" />' +
+                '</radialGradient>' +
+            '</defs>' +
+            '<rect width="200" height="110" fill="url(#grad-' + card.id + ')" />' +
+            '<circle cx="100" cy="55" r="55" fill="url(#aura-' + card.id + ')" />' +
+            '<polygon points="0,110 ' + cx1 + ',' + cy1 + ' 200,110" fill="rgba(255,255,255,0.05)" />' +
+            '<circle cx="' + cx1 + '" cy="22" r="2" fill="#ffffff" opacity="0.7" />' +
+            '<circle cx="' + (200 - cx1) + '" cy="30" r="1.5" fill="#ffffff" opacity="0.5" />' +
+            '<circle cx="100" cy="55" r="34" fill="rgba(0,0,0,0.35)" stroke="' + p.glow + '" stroke-width="1.5" />' +
+            '<text x="100" y="68" font-size="38" text-anchor="middle">' + card.icon + '</text>' +
+        '</svg>';
+    }
+
+    const CARDS_DB = [
+        { id: 1, collection: "Manga", name: "Recrue de l'Ombre", rarity: "Commun", icon: "🥷", desc: "Initié maîtrisant la dissimulation dans la brume." },
+        { id: 2, collection: "Manga", name: "Garde du Sanctuaire", rarity: "Commun", icon: "🛡️", desc: "Protège les portes sacrées des temples célestes." },
+        { id: 3, collection: "Manga", name: "Apprenti Forgeron", rarity: "Commun", icon: "🔨", desc: "Façonne des katanas imprégnés d'énergie brute." },
+        { id: 4, collection: "Manga", name: "Esprit Follet", rarity: "Commun", icon: "👻", desc: "Petite âme errante des forêts de bambous." },
+        { id: 5, collection: "Manga", name: "Éclaireur des Cimes", rarity: "Commun", icon: "🦅", desc: "Surveille les vallées depuis les pics enneigés." },
+        { id: 6, collection: "Manga", name: "Disciple du Vent", rarity: "Commun", icon: "🍃", desc: "Fend l'air grâce à son éventail de combat." },
+        { id: 7, collection: "Manga", name: "Moine de Pierre", rarity: "Commun", icon: "📿", desc: "Sa peau résiste aux coups d'épée ordinaires." },
+        { id: 8, collection: "Manga", name: "Lame-Spectre", rarity: "UnCommun", icon: "🗡️", desc: "Frappe avant même que son ombre ne bouge." },
+        { id: 9, collection: "Manga", name: "Prêtresse de l'Aube", rarity: "UnCommun", icon: "✨", desc: "Purifie les malédictions par la lumière." },
+        { id: 10, collection: "Manga", name: "Loup Spirituel", rarity: "UnCommun", icon: "🐺", desc: "Gardien sauvage du plan astral." },
+        { id: 11, collection: "Manga", name: "Samouraï Errant", rarity: "UnCommun", icon: "⚔️", desc: "Maître du sabre sans seigneur ni attache." },
+        { id: 12, collection: "Manga", name: "Ayame l'Exorciste", rarity: "Rare", icon: "⛩️", desc: "Scelle les démons majeurs avec ses talismans." },
+        { id: 13, collection: "Manga", name: "Chevalier Solaire", rarity: "Rare", icon: "☀️", desc: "Son armure rayonne d'une chaleur aveuglante." },
+        { id: 14, collection: "Manga", name: "Kitsune à 7 Queues", rarity: "Rare", icon: "🦊", desc: "Crée des illusions indiscernables du réel." },
+        { id: 15, collection: "Manga", name: "Forgeron Maudit", rarity: "Epique", icon: "🔥", desc: "Ses lames dévorent l'aura de leurs victimes." },
+        { id: 16, collection: "Manga", name: "Oracle des Abysses", rarity: "Epique", icon: "🔮", desc: "Lit le destin dans les failles d'ombre." },
+        { id: 17, collection: "Manga", name: "Empereur Oni", rarity: "Epique", icon: "👹", desc: "Sa force brute fait trembler les montagnes." },
+        { id: 18, collection: "Manga", name: "Dragon Écarlate", rarity: "Legendaire", icon: "🐉", desc: "Gardien ancestral des flammes originelles." },
+        { id: 19, collection: "Manga", name: "Archange d'Éther", rarity: "Legendaire", icon: "👼", desc: "Commandant suprême des légions célestes." },
+        { id: 20, collection: "Manga", name: "Souverain du Néant", rarity: "Mystique", icon: "🌌", desc: "Entité capable d'effacer la réalité d'un geste." },
+
+        { id: 21, collection: "Cyber", name: "Drone Sentinelle", rarity: "Commun", icon: "🛸", desc: "Patrouille les bas-fonds de Néo-Tokyo." },
+        { id: 22, collection: "Cyber", name: "Coursier Néon", rarity: "Commun", icon: "🏍️", desc: "Livre des puces cryptées à 300 km/h." },
+        { id: 23, collection: "Cyber", name: "Mercenaire Chromé", rarity: "Commun", icon: "🦾", desc: "Bras bionique équipé d'un canon à plasma." },
+        { id: 24, collection: "Cyber", name: "Hacker des Rues", rarity: "Commun", icon: "💻", desc: "Pirate les distributeurs et les caméras." },
+        { id: 25, collection: "Cyber", name: "Androïde Médic", rarity: "Commun", icon: "🩺", desc: "Répare les implants endommagés au combat." },
+        { id: 26, collection: "Cyber", name: "Sniper Holographique", rarity: "UnCommun", icon: "🎯", desc: "Vise à travers les murs grâce au sonar." },
+        { id: 27, collection: "Cyber", name: "Ronin Cybernétique", rarity: "UnCommun", icon: "⚡", desc: "Katana haute fréquence coupant l'acier." },
+        { id: 28, collection: "Cyber", name: "Mecha-Garde v4", rarity: "UnCommun", icon: "🤖", desc: "Exosquelette lourd de sécurité corporative." },
+        { id: 29, collection: "Cyber", name: "Fantôme du Réseau", rarity: "Rare", icon: "👾", desc: "Conscience humaine transférée dans le Cloud." },
+        { id: 30, collection: "Cyber", name: "Valkyrie Plasma", rarity: "Rare", icon: "🚀", desc: "Ailes propulsées par réacteurs ioniques." },
+        { id: 31, collection: "Cyber", name: "Titan d'Acier Noir", rarity: "Epique", icon: "🦾", desc: "Colosse mécanique quasi indestructible." },
+        { id: 32, collection: "Cyber", name: "Impératrice Cyber", rarity: "Epique", icon: "👑", desc: "Contrôle toute la mégapole par satellite." },
+        { id: 33, collection: "Cyber", name: "Léviathan Mécanique", rarity: "Legendaire", icon: "🦈", desc: "Forteresse sous-marine armée de lasers." },
+        { id: 34, collection: "Cyber", name: "IA Omnisciente Omega", rarity: "Legendaire", icon: "🧠", desc: "Calcule 10 milliards de futurs par seconde." },
+        { id: 35, collection: "Cyber", name: "Singularité Quantique", rarity: "Mystique", icon: "⚛️", desc: "Fusion ultime entre l'homme, la machine et l'énergie." },
+
+        { id: 36, collection: "Cosmos", name: "Éclat d'Étoile", rarity: "Commun", icon: "⭐", desc: "Fragment lumineux né d'une nébuleuse." },
+        { id: 37, collection: "Cosmos", name: "Vagabond Lunaire", rarity: "Commun", icon: "🌙", desc: "Marche sur les cratères silencieux." },
+        { id: 38, collection: "Cosmos", name: "Golem de Météorite", rarity: "Commun", icon: "☄️", desc: "Forgé dans la roche spatiale incandescente." },
+        { id: 39, collection: "Cosmos", name: "Sentinelle d'Orion", rarity: "Commun", icon: "🏹", desc: "Tire des flèches de pure lumière stellaire." },
+        { id: 40, collection: "Cosmos", name: "Méduse Nébulaire", rarity: "Commun", icon: "🪼", desc: "Flotte dans le vide cosmique sans gravité." },
+        { id: 41, collection: "Cosmos", name: "Gardien de Saturne", rarity: "UnCommun", icon: "🪐", desc: "Manipule les anneaux de glace comme des boucliers." },
+        { id: 42, collection: "Cosmos", name: "Phénix Solaire", rarity: "UnCommun", icon: "🦅", desc: "Renaît au cœur des éruptions solaires." },
+        { id: 43, collection: "Cosmos", name: "Tisseur de Constellations", rarity: "UnCommun", icon: "✨", desc: "Relie les astres pour invoquer des géants." },
+        { id: 44, collection: "Cosmos", name: "Avatar d'Andromède", rarity: "Rare", icon: "💫", desc: "Canalisateur de la puissance d'une galaxie." },
+        { id: 45, collection: "Cosmos", name: "Chevalier du Zodiaque", rarity: "Rare", icon: "🔱", desc: "Armure bénie par les douze constellations." },
+        { id: 46, collection: "Cosmos", name: "Dévoreur de Soleils", rarity: "Epique", icon: "🌑", desc: "Éteint les étoiles pour nourrir sa puissance." },
+        { id: 47, collection: "Cosmos", name: "Déesse de l'Aurore", rarity: "Epique", icon: "🌈", desc: "Illumine les mondes plongés dans la nuit." },
+        { id: 48, collection: "Cosmos", name: "Titan Chronos", rarity: "Legendaire", icon: "⏳", desc: "Maître absolu du temps et des cycles cosmiques." },
+        { id: 49, collection: "Cosmos", name: "Serpent Galactique", rarity: "Legendaire", icon: "🐍", desc: "Son corps s'enroule autour de milliers de mondes." },
+        { id: 50, collection: "Cosmos", name: "Architecte de l'Univers", rarity: "Mystique", icon: "👁️", desc: "Créateur originel des étoiles et de l'Éther." }
+    ];
+
+    const RECYCLE_VALUES = {
+        "Commun": 5,
+        "UnCommun": 15,
+        "Rare": 40,
+        "Epique": 120,
+        "Legendaire": 400,
+        "Mystique": 1500
+    };
+
+    const RARITY_ORDER = {
+        "Mystique": 6,
+        "Legendaire": 5,
+        "Epique": 4,
+        "Rare": 3,
+        "UnCommun": 2,
+        "Commun": 1
+    };
+
+    let state = {
+        boosters: 10,
+        maxBoosterStock: 10,
+        maxBoosterUpgradeCost: 300,
+        waitSecondsTotal: 600,
+        secondsRemaining: 600,
+        ether: 200,
+        inventory: {},
+        timerUpgradeCost: 200,
+        theme: "ether",
+        textColor: "#f0f2f8",
+        cardBorderColor: "default",
+        missions: {
+            dailyOpened: 0,
+            dailyRecycled: 0,
+            weeklyOpened: 0,
+            weeklyTraded: 0,
+            dailyClaimed: [false, false],
+            weeklyClaimed: [false, false]
+        },
+        calendar: {
+            currentDay: 1,
+            claimedDays: [],
+            lastClaimTimestamp: 0
+        }
+    };
+
+    let selectedPackType = "ether";
+    let currentCollectionFilter = "ALL";
+
+    let tradeState = {
+        myCards: [],
+        partnerCards: [],
+        myLocked: false,
+        partnerLocked: false
+    };
+
+    let interactiveSession = {
+        cards: [],
+        currentIndex: 0,
+        isFlipped: false,
+        isAnimating: false
+    };
+
+    function loadGame() {
+        try {
+            const saved = localStorage.getItem('ether_tcg_save_v9');
+            if (saved) {
+                state = { ...state, ...JSON.parse(saved) };
+                if (!state.missions) state.missions = { dailyOpened: 0, dailyRecycled: 0, weeklyOpened: 0, weeklyTraded: 0, dailyClaimed: [false, false], weeklyClaimed: [false, false] };
+                if (!state.calendar) state.calendar = { currentDay: 1, claimedDays: [], lastClaimTimestamp: 0 };
+            }
+        } catch (e) {
+            console.warn("Sauvegarde corrompue réinitialisée :", e);
+            localStorage.removeItem('ether_tcg_save_v9');
+        }
+        applyAppearance();
+        updateUI();
+        animateBackground();
+    }
+
+    function saveGame() {
+        localStorage.setItem('ether_tcg_save_v9', JSON.stringify(state));
+    }
+
+    // Global tick every second for boosters and calendar 24h cooldown
+    setInterval(() => {
+        if (state.boosters >= state.maxBoosterStock) {
+            // Le stock est plein, on bloque le timer
+            state.secondsRemaining = state.waitSecondsTotal;
+        } else {
+            state.secondsRemaining--;
+            if (state.secondsRemaining <= 0) {
+                state.boosters++;
+                if (state.boosters > state.maxBoosterStock) {
+                    state.boosters = state.maxBoosterStock;
+                }
+                state.secondsRemaining = state.waitSecondsTotal;
+                showToast("📦 +1 Booster gratuit disponible !");
+                saveGame();
+            }
+        }
+        updateTimerDisplay();
+        updateCalendarTimerDisplay();
+    }, 1000);
+
+    function formatTime(sec) {
+        const m = Math.floor(sec / 60);
+        const s = sec % 60;
+        return m + ":" + (s < 10 ? '0' : '') + s;
+    }
+
+    function formatTimeRemaining(ms) {
+        const totalSec = Math.ceil(ms / 1000);
+        const h = Math.floor(totalSec / 3600);
+        const m = Math.floor((totalSec % 3600) / 60);
+        const s = totalSec % 60;
+        if (h > 0) {
+            return h + "h " + m + "m " + s + "s";
+        }
+        return m + "m " + s + "s";
+    }
+
+    function updateTimerDisplay() {
+        document.getElementById('booster-timer').textContent = formatTime(state.secondsRemaining);
+        document.getElementById('booster-count').textContent = state.boosters;
+
+        const packBtn = document.getElementById('pack-btn');
+        if (state.boosters <= 0) packBtn.classList.add('disabled');
+        else packBtn.classList.remove('disabled');
+
+        document.getElementById('btn-open-1').disabled = state.boosters < 1;
+        document.getElementById('btn-open-5').disabled = state.boosters < 5;
+        document.getElementById('btn-open-10').disabled = state.boosters < 10;
+    }
+
+    function updateCalendarTimerDisplay() {
+        if (!state.calendar) return;
+        const COOLDOWN_MS = 24 * 60 * 60 * 1000;
+        const now = Date.now();
+        const elapsed = now - (state.calendar.lastClaimTimestamp || 0);
+        const remaining = COOLDOWN_MS - elapsed;
+
+        const statusEl = document.getElementById('cal-timer-status');
+        if (state.calendar.currentDay > 30) {
+            statusEl.innerHTML = "🎉 <strong>Calendrier complété !</strong> Félicitations pour avoir récupéré toutes les récompenses.";
+            return;
+        }
+
+        if (remaining > 0 && state.calendar.lastClaimTimestamp > 0) {
+            statusEl.innerHTML = "⏳ Prochaine récompense (Jour " + state.calendar.currentDay + ") disponible dans : <strong style='color: var(--ether);'>" + formatTimeRemaining(remaining) + "</strong>";
+        } else {
+            statusEl.innerHTML = "🎁 <strong>Récompense disponible dès maintenant !</strong> (Jour " + state.calendar.currentDay + "/30)";
+        }
+
+        // Also update calendar grid cells without full re-render every second if possible, or just let renderMissionsAndCalendar handle it when opened/claimed
+    }
+
+    function selectPackType(type) {
+        selectedPackType = type;
+        document.querySelectorAll('.pack-type-card').forEach(c => c.classList.remove('selected'));
+        const target = document.querySelector('[data-pack="' + type + '"]');
+        if (target) target.classList.add('selected');
+
+        const packVisual = document.getElementById('pack-btn');
+        if (type === 'ether') {
+            packVisual.classList.remove('pack-astral');
+            document.getElementById('pack-visual-icon').textContent = "⚔️";
+            document.getElementById('pack-visual-title').textContent = "Booster Éther";
+        } else {
+            packVisual.classList.add('pack-astral');
+            document.getElementById('pack-visual-icon').textContent = "🌌";
+            document.getElementById('pack-visual-title').textContent = "Booster Astral";
+        }
+    }
+
+    function getPoolForCurrentPack() {
+        if (selectedPackType === 'ether') {
+            return CARDS_DB.filter(c => c.collection === "Manga");
+        } else {
+            return CARDS_DB.filter(c => c.collection === "Cyber" || c.collection === "Cosmos");
+        }
+    }
+
+    function getRandomCardByRarity(rarity, pool) {
+        const filtered = pool.filter(c => c.rarity === rarity);
+        return filtered[Math.floor(Math.random() * filtered.length)];
+    }
+
+    function roll8thCard(pool, packMode) {
+        if (packMode === 'mystic') {
+            return getRandomCardByRarity("Mystique", CARDS_DB);
+        }
+        const rand = Math.random() * 100;
+        if (packMode === 'chromatic') {
+            return rand < 75 ? getRandomCardByRarity("Legendaire", pool) : getRandomCardByRarity("Mystique", pool);
+        }
+        if (rand < 58) return getRandomCardByRarity("Rare", pool);
+        if (rand < 84) return getRandomCardByRarity("Epique", pool);
+        if (rand < 96) return getRandomCardByRarity("Legendaire", pool);
+        return getRandomCardByRarity("Mystique", pool);
+    }
+
+    function drawSinglePack(packMode) {
+        const pool = (packMode === 'chromatic' || packMode === 'mystic') ? CARDS_DB : getPoolForCurrentPack();
+        const rawCards = [];
+        for (let i = 0; i < 4; i++) rawCards.push(getRandomCardByRarity("Commun", pool));
+        for (let i = 0; i < 2; i++) rawCards.push(getRandomCardByRarity("UnCommun", pool));
+        rawCards.push(getRandomCardByRarity("Rare", pool));
+        rawCards.push(roll8thCard(pool, packMode));
+
+        return rawCards.map((card, idx) => ({
+            card: card,
+            isFoil: (packMode === 'mystic' && idx === 7) ? true : (Math.random() < 0.20)
+        }));
+    }
+
+    function openBoosters(count, packMode = 'normal') {
+        if (packMode === 'normal') {
+            if (state.boosters < count) {
+                showToast("❌ Il vous faut au moins " + count + " booster(s) !");
+                return;
+            }
+            state.boosters -= count;
+        }
+
+        state.missions.dailyOpened += count;
+        state.missions.weeklyOpened += count;
+
+        let allDrawn = [];
+        for (let p = 0; p < count; p++) {
+            allDrawn = allDrawn.concat(drawSinglePack(packMode));
+        }
+
+        const revealGrid = document.getElementById('revealed-cards');
+        revealGrid.innerHTML = '';
+
+        if (count === 1) {
+            const preparedCards = allDrawn.map(item => {
+                const key = item.card.id + "_" + (item.isFoil ? 'foil' : 'normal');
+                const isNew = !state.inventory[key];
+                state.inventory[key] = (state.inventory[key] || 0) + 1;
+                return { card: item.card, isFoil: item.isFoil, isNew: isNew };
+            });
+
+            startInteractivePackOpening(preparedCards, packMode);
+
+            document.getElementById('reveal-title').textContent = "🎉 Récapitulatif du Booster (8 cartes) :";
+            preparedCards.forEach((item, index) => {
+                revealGrid.appendChild(createCardElement(item.card, {
+                    isFoil: item.isFoil,
+                    isNew: item.isNew,
+                    delay: index * 0.05
+                }));
+            });
+        } else {
+            document.getElementById('reveal-title').textContent = "🔥 Ouverture x" + count + " Boosters (" + allDrawn.length + " cartes) :";
+            const summaryMap = {};
+            allDrawn.forEach(item => {
+                const key = item.card.id + "_" + (item.isFoil ? 'foil' : 'normal');
+                const wasUnowned = !state.inventory[key];
+                state.inventory[key] = (state.inventory[key] || 0) + 1;
+
+                if (!summaryMap[key]) {
+                    summaryMap[key] = { card: item.card, isFoil: item.isFoil, gained: 0, isNew: wasUnowned };
+                }
+                summaryMap[key].gained++;
+            });
+
+            const sorted = Object.values(summaryMap).sort((a, b) => {
+                if (RARITY_ORDER[b.card.rarity] !== RARITY_ORDER[a.card.rarity]) {
+                    return RARITY_ORDER[b.card.rarity] - RARITY_ORDER[a.card.rarity];
+                }
+                return (b.isFoil ? 1 : 0) - (a.isFoil ? 1 : 0);
+            });
+
+            sorted.forEach((entry, index) => {
+                revealGrid.appendChild(createCardElement(entry.card, {
+                    isFoil: entry.isFoil,
+                    isNew: entry.isNew,
+                    qtyBadge: "+" + entry.gained,
+                    delay: index * 0.05
+                }));
+            });
+
+            document.getElementById('pack-container').style.display = 'none';
+            document.getElementById('reveal-area').style.display = 'block';
+        }
+
+        saveGame();
+        updateUI();
+    }
+
+    function startInteractivePackOpening(cardsList, packMode) {
+        interactiveSession = {
+            cards: cardsList,
+            currentIndex: 0,
+            isFlipped: false,
+            isAnimating: false
+        };
+
+        const stage = document.getElementById('opening-stage');
+        const tearStep = document.getElementById('tear-step');
+        const stackStep = document.getElementById('stack-step');
+        const tearBox = document.getElementById('tear-pack-box');
+
+        tearBox.className = 'tear-pack-wrapper';
+        if (packMode === 'mystic') {
+            tearBox.classList.add('astral-theme');
+            document.getElementById('tear-pack-icon').textContent = "👑";
+            document.getElementById('tear-pack-title').textContent = "Booster Mystique Garanti";
+            document.getElementById('card-back-icon').textContent = "👑";
+        } else if (selectedPackType === 'astral' || packMode === 'chromatic') {
+            tearBox.classList.add('astral-theme');
+            document.getElementById('tear-pack-icon').textContent = packMode === 'chromatic' ? "🌈" : "🌌";
+            document.getElementById('tear-pack-title').textContent = packMode === 'chromatic' ? "Booster Chromatique" : "Booster Astral";
+            document.getElementById('card-back-icon').textContent = "🌌";
+        } else {
+            document.getElementById('tear-pack-icon').textContent = "⚔️";
+            document.getElementById('tear-pack-title').textContent = "Booster Éther";
+            document.getElementById('card-back-icon').textContent = "⚔️";
+        }
+
+        tearStep.style.display = 'flex';
+        stackStep.style.display = 'none';
+        stage.classList.add('active');
+    }
+
+    function ripOpenPack() {
+        if (interactiveSession.isAnimating) return;
+        interactiveSession.isAnimating = true;
+
+        const tearBox = document.getElementById('tear-pack-box');
+        const flash = document.getElementById('tear-flash');
+
+        tearBox.classList.add('shaking');
+
+        setTimeout(() => {
+            tearBox.classList.remove('shaking');
+            tearBox.classList.add('ripped');
+
+            flash.classList.remove('flash-bang');
+            void flash.offsetWidth;
+            flash.classList.add('flash-bang');
+
+            setTimeout(() => {
+                document.getElementById('tear-step').style.display = 'none';
+                document.getElementById('stack-step').style.display = 'flex';
+                interactiveSession.isAnimating = false;
+                loadCardIntoStack(0);
+            }, 420);
+        }, 400);
+    }
+
+    function loadCardIntoStack(index) {
+        const item = interactiveSession.cards[index];
+        const flipBox = document.getElementById('flip-card-box');
+        const frontSlot = document.getElementById('card-front-slot');
+
+        interactiveSession.currentIndex = index;
+        interactiveSession.isFlipped = false;
+
+        flipBox.className = "flip-card-container glow-hint-" + item.card.rarity;
+        document.getElementById('stack-counter-label').textContent = "Carte " + (index + 1) + " / " + interactiveSession.cards.length;
+        document.getElementById('stack-action-hint').textContent = "👆 Cliquez sur la carte pour la retourner !";
+
+        frontSlot.innerHTML = '';
+        frontSlot.appendChild(createCardElement(item.card, {
+            isFoil: item.isFoil,
+            isNew: item.isNew
+        }));
+    }
+
+    function handleCardStackClick() {
+        if (interactiveSession.isAnimating) return;
+
+        const flipBox = document.getElementById('flip-card-box');
+
+        if (!interactiveSession.isFlipped) {
+            interactiveSession.isFlipped = true;
+            flipBox.classList.add('flipped');
+
+            const isLast = interactiveSession.currentIndex >= interactiveSession.cards.length - 1;
+            document.getElementById('stack-action-hint').textContent = isLast
+                ? "✨ Cliquez pour voir le récapitulatif complet !"
+                : "👉 Cliquez pour passer à la carte suivante";
+        } else {
+            interactiveSession.isAnimating = true;
+            flipBox.classList.add('slide-out');
+
+            setTimeout(() => {
+                interactiveSession.isAnimating = false;
+                if (interactiveSession.currentIndex + 1 < interactiveSession.cards.length) {
+                    loadCardIntoStack(interactiveSession.currentIndex + 1);
+                } else {
+                    finishInteractiveOpening();
+                }
+            }, 300);
+        }
+    }
+
+    function skipRemainingStack() {
+        finishInteractiveOpening();
+    }
+
+    function finishInteractiveOpening() {
+        document.getElementById('opening-stage').classList.remove('active');
+        document.getElementById('pack-container').style.display = 'none';
+        document.getElementById('reveal-area').style.display = 'block';
+    }
+
+    function resetPackView() {
+        document.getElementById('reveal-area').style.display = 'none';
+        document.getElementById('pack-container').style.display = 'flex';
+    }
+
+    function createCardElement(card, opts = {}) {
+        const isChromatic = (card.rarity === "Legendaire" || card.rarity === "Mystique");
+        const el = document.createElement('div');
+        el.className = "card rarity-" + card.rarity + " " + (opts.isFoil ? 'is-foil' : '') + " " + (isChromatic ? 'is-chromatic' : '') + " " + (opts.unowned ? 'unowned' : '');
+        if (opts.delay) el.style.animationDelay = opts.delay + "s";
+
+        if (!isChromatic && state.cardBorderColor !== 'default' && !opts.unowned) {
+            el.style.borderColor = state.cardBorderColor;
+        }
+
+        el.innerHTML = 
+            (opts.isNew ? '<span class="badge-new">NOUVEAU !</span>' : '') +
+            (opts.isFoil ? '<span class="badge-foil">✨ BRILLANTE</span>' : '') +
+            (opts.qtyBadge ? '<span class="badge-qty">' + opts.qtyBadge + '</span>' : '') +
+            '<div class="card-header">' +
+                '<span class="rarity-tag">' + card.rarity + ' ' + (isChromatic ? '🌈' : '') + '</span>' +
+                '<span>#' + card.id + '</span>' +
+            '</div>' +
+            '<div class="card-art">' + (opts.unowned ? '<div style="font-size:2.5rem;">❓</div>' : generateCardArtwork(card)) + '</div>' +
+            '<div>' +
+                '<div class="card-name">' + (opts.unowned ? 'Carte Inconnue' : card.name) + '</div>' +
+                '<div class="card-meta">' +
+                    '<span>' + card.collection + '</span>' +
+                    (opts.ownershipLabel ? '<span>' + opts.ownershipLabel + '</span>' : '') +
+                '</div>' +
+                '<div class="card-desc">' + (opts.unowned ? 'Ouvrez des boosters pour débloquer cette carte.' : card.desc) + '</div>' +
+            '</div>';
+
+        if (opts.showSellControls) {
+            const normalCount = state.inventory[card.id + '_normal'] || 0;
+            const foilCount = state.inventory[card.id + '_foil'] || 0;
+            const baseVal = RECYCLE_VALUES[card.rarity];
+            const totalForCard = normalCount + foilCount;
+
+            const bar = document.createElement('div');
+            bar.className = 'card-sell-bar';
+
+            if (normalCount > 0) {
+                const b1 = document.createElement('button');
+                b1.className = 'btn-sell-unit';
+                b1.disabled = (totalForCard <= 1);
+                if (totalForCard <= 1) b1.title = "Dernier exemplaire unique";
+                b1.textContent = "Vendre Normale (+" + baseVal + "💎)";
+                b1.addEventListener('click', (e) => { e.stopPropagation(); sellSingleCard(card.id, false); });
+                bar.appendChild(b1);
+            }
+
+            if (foilCount > 0) {
+                const b2 = document.createElement('button');
+                b2.className = 'btn-sell-unit';
+                b2.style.borderColor = '#fdcb6e';
+                b2.style.color = '#fdcb6e';
+                b2.disabled = (totalForCard <= 1);
+                if (totalForCard <= 1) b2.title = "Dernier exemplaire unique";
+                b2.textContent = "Vendre Brillante (+" + (baseVal * 2) + "💎)";
+                b2.addEventListener('click', (e) => { e.stopPropagation(); sellSingleCard(card.id, true); });
+                bar.appendChild(b2);
+            }
+
+            el.appendChild(bar);
+        }
+
+        return el;
+    }
+
+    function setCollectionFilter(filter, btn) {
+        currentCollectionFilter = filter;
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        renderCollection();
+    }
+
+    function sellSingleCard(cardId, isFoil) {
+        const key = cardId + "_" + (isFoil ? 'foil' : 'normal');
+        if (!state.inventory[key] || state.inventory[key] <= 0) return;
+
+        const norm = state.inventory[cardId + '_normal'] || 0;
+        const foil = state.inventory[cardId + '_foil'] || 0;
+        if ((norm + foil) <= 1) {
+            showToast("❌ Impossible de vendre le seul exemplaire de cette carte !");
+            return;
+        }
+
+        const card = CARDS_DB.find(c => c.id === cardId);
+        const value = RECYCLE_VALUES[card.rarity] * (isFoil ? 2 : 1);
+
+        state.inventory[key]--;
+        if (state.inventory[key] <= 0) delete state.inventory[key];
+
+        state.ether += value;
+        showToast("💎 " + card.name + " (" + (isFoil ? 'Brillante' : 'Normale') + ") vendue pour +" + value + " Fragments !");
+        saveGame();
+        updateUI();
+    }
+
+    function calculateDuplicateFragments() {
+        let total = 0;
+        for (const [key, count] of Object.entries(state.inventory)) {
+            if (count > 1) {
+                const parts = key.split('_');
+                const id = parts[0];
+                const type = parts[1];
+                const card = CARDS_DB.find(c => c.id == id);
+                const mult = (type === 'foil') ? 2 : 1;
+                total += (count - 1) * RECYCLE_VALUES[card.rarity] * mult;
+            }
+        }
+        return total;
+    }
+
+    function recycleAllDuplicates() {
+        const gain = calculateDuplicateFragments();
+        if (gain <= 0) return;
+
+        state.missions.dailyRecycled++;
+
+        for (const key of Object.keys(state.inventory)) {
+            if (state.inventory[key] > 1) {
+                state.inventory[key] = 1;
+            }
+        }
+        state.ether += gain;
+        showToast("♻️ Doublons recyclés ! +" + gain + " Fragments d'Éther obtenus.");
+        saveGame();
+        updateUI();
+    }
+
+    function renderCollection() {
+        const grid = document.getElementById('collection-grid');
+        grid.innerHTML = '';
+        let unlockedUniqueCount = 0;
+
+        CARDS_DB.forEach(card => {
+            const norm = state.inventory[card.id + '_normal'] || 0;
+            const foil = state.inventory[card.id + '_foil'] || 0;
+            const totalOwned = norm + foil;
+            if (totalOwned > 0) unlockedUniqueCount++;
+
+            if (currentCollectionFilter === 'FOIL' && foil === 0) return;
+            if (['Manga', 'Cyber', 'Cosmos'].includes(currentCollectionFilter) && card.collection !== currentCollectionFilter) return;
+
+            let label = '';
+            if (totalOwned > 0) {
+                label = "N:" + norm + " | ✨:" + foil;
+            }
+
+            grid.appendChild(createCardElement(card, {
+                unowned: totalOwned === 0,
+                isFoil: foil > 0,
+                qtyBadge: totalOwned > 0 ? "x" + totalOwned : null,
+                ownershipLabel: label,
+                showSellControls: totalOwned > 0
+            }));
+        });
+
+        document.getElementById('col-progress').textContent = unlockedUniqueCount;
+        const previewGain = calculateDuplicateFragments();
+        document.getElementById('recycle-preview').textContent = previewGain;
+        document.getElementById('recycle-btn').disabled = previewGain === 0;
+    }
+
+    function renderMissionsAndCalendar() {
+        const dailyContainer = document.getElementById('daily-missions-list');
+        dailyContainer.innerHTML = '';
+
+        const dailyQuests = [
+            { id: 0, title: "Ouvrir 3 Boosters", target: 3, current: Math.min(3, state.missions.dailyOpened), reward: "50 Fragments", type: "ether", amount: 50 },
+            { id: 1, title: "Recycler des doublons", target: 1, current: Math.min(1, state.missions.dailyRecycled), reward: "1 Booster", type: "booster", amount: 1 }
+        ];
+
+        dailyQuests.forEach(q => {
+            const pct = Math.min(100, (q.current / q.target) * 100);
+            const claimed = state.missions.dailyClaimed[q.id];
+            const completed = q.current >= q.target;
+
+            const div = document.createElement('div');
+            div.className = 'mission-card';
+            div.innerHTML = 
+                '<div class="mission-info" style="flex:1;">' +
+                    '<h4>' + q.title + ' (' + q.current + '/' + q.target + ')</h4>' +
+                    '<p>Récompense : <strong>' + q.reward + '</strong></p>' +
+                    '<div class="progress-bar-bg"><div class="progress-bar-fill" style="width: ' + pct + '%;"></div></div>' +
+                '</div>';
+            
+            const btn = document.createElement('button');
+            btn.className = 'btn-action';
+            btn.disabled = (!completed || claimed);
+            btn.textContent = claimed ? '✔️ Récupéré' : (completed ? '🎁 Récupérer' : '⏳ En cours');
+            btn.addEventListener('click', () => claimDailyReward(q.id, q.type, q.amount));
+            div.appendChild(btn);
+
+            dailyContainer.appendChild(div);
+        });
+
+        const weeklyContainer = document.getElementById('weekly-missions-list');
+        weeklyContainer.innerHTML = '';
+
+        const weeklyQuests = [
+            { id: 0, title: "Ouvrir 10 Boosters", target: 10, current: Math.min(10, state.missions.weeklyOpened), reward: "250 Fragments", type: "ether", amount: 250 },
+            { id: 1, title: "Réaliser 3 Échanges sécurisés", target: 3, current: Math.min(3, state.missions.weeklyTraded), reward: "2 Boosters", type: "booster", amount: 2 }
+        ];
+
+        weeklyQuests.forEach(q => {
+            const pct = Math.min(100, (q.current / q.target) * 100);
+            const claimed = state.missions.weeklyClaimed[q.id];
+            const completed = q.current >= q.target;
+
+            const div = document.createElement('div');
+            div.className = 'mission-card';
+            div.innerHTML = 
+                '<div class="mission-info" style="flex:1;">' +
+                    '<h4>' + q.title + ' (' + q.current + '/' + q.target + ')</h4>' +
+                    '<p>Récompense : <strong>' + q.reward + '</strong></p>' +
+                    '<div class="progress-bar-bg"><div class="progress-bar-fill" style="width: ' + pct + '%;"></div></div>' +
+                '</div>';
+
+            const btn = document.createElement('button');
+            btn.className = 'btn-action';
+            btn.disabled = (!completed || claimed);
+            btn.textContent = claimed ? '✔️ Récupéré' : (completed ? '🎁 Récupérer' : '⏳ En cours');
+            btn.addEventListener('click', () => claimWeeklyReward(q.id, q.type, q.amount));
+            div.appendChild(btn);
+
+            weeklyContainer.appendChild(div);
+        });
+
+        document.getElementById('cal-day-counter').textContent = "Progression : " + Math.min(30, state.calendar.claimedDays.length) + "/30 Jours";
+        updateCalendarTimerDisplay();
+
+        const calGrid = document.getElementById('calendar-grid-container');
+        calGrid.innerHTML = '';
+
+        const COOLDOWN_MS = 24 * 60 * 60 * 1000;
+        const now = Date.now();
+        const timeSinceLast = now - (state.calendar.lastClaimTimestamp || 0);
+        const canClaimNow = (state.calendar.lastClaimTimestamp === 0 || timeSinceLast >= COOLDOWN_MS) && state.calendar.currentDay <= 30;
+
+        for (let day = 1; day <= 30; day++) {
+            const claimed = state.calendar.claimedDays.includes(day);
+            const isCurrentClaimable = (day === state.calendar.currentDay && canClaimNow);
+            const isMysticDay = (day === 30);
+
+            let icon = "💎";
+            let rewardText = "+30 💎";
+            if (day % 5 === 0 && !isMysticDay) { icon = "📦"; rewardText = "+1 Booster"; }
+            if (isMysticDay) { icon = "👑"; rewardText = "Mystique !"; }
+
+            let statusClass = "";
+            if (claimed) statusClass = "claimed";
+            else if (isCurrentClaimable) statusClass = "claimable";
+
+            const cell = document.createElement('div');
+            cell.className = "cal-day " + statusClass + " " + (isMysticDay ? 'mystical-day' : '');
+            cell.innerHTML = 
+                '<div class="cal-num">Jour ' + day + '</div>' +
+                '<div class="cal-icon">' + (claimed ? '✔️' : icon) + '</div>' +
+                '<div class="cal-reward">' + (claimed ? 'Récupéré' : rewardText) + '</div>';
+
+            if (isCurrentClaimable) {
+                cell.addEventListener('click', () => claimCalendarDay(day));
+            }
+            calGrid.appendChild(cell);
+        }
+    }
+
+    function claimDailyReward(id, type, amount) {
+        if (state.missions.dailyClaimed[id]) return;
+        state.missions.dailyClaimed[id] = true;
+        if (type === 'ether') state.ether += amount;
+        if (type === 'booster') state.boosters += amount;
+        showToast("🎁 Récompense quotidienne récupérée !");
+        saveGame();
+        updateUI();
+    }
+
+    function claimWeeklyReward(id, type, amount) {
+        if (state.missions.weeklyClaimed[id]) return;
+        state.missions.weeklyClaimed[id] = true;
+        if (type === 'ether') state.ether += amount;
+        if (type === 'booster') state.boosters += amount;
+        showToast("🏆 Récompense hebdomadaire récupérée !");
+        saveGame();
+        updateUI();
+    }
+
+    function claimCalendarDay(day) {
+        const COOLDOWN_MS = 24 * 60 * 60 * 1000;
+        const now = Date.now();
+        if (state.calendar.lastClaimTimestamp > 0 && (now - state.calendar.lastClaimTimestamp) < COOLDOWN_MS) {
+            showToast("⏳ Patiente encore avant la prochaine réclame (24h) !");
+            return;
+        }
+
+        if (state.calendar.claimedDays.includes(day)) return;
+
+        state.calendar.claimedDays.push(day);
+        state.calendar.lastClaimTimestamp = now;
+
+        if (day === 30) {
+            showToast("👑 BOOSTER MYSTIQUE GAGNÉ !");
+            switchTab('open');
+            openBoosters(1, 'mystic');
+        } else if (day % 5 === 0) {
+            state.boosters += 1;
+            showToast("📦 Calendrier Jour " + day + " : +1 Booster !");
+        } else {
+            state.ether += 30;
+            showToast("💎 Calendrier Jour " + day + " : +30 Fragments !");
+        }
+
+        if (state.calendar.currentDay < 30) {
+            state.calendar.currentDay++;
+        }
+
+        saveGame();
+        updateUI();
+    }
+
+    function populateTradeSelect() {
+        const select = document.getElementById('my-trade-card-select');
+        select.innerHTML = '';
+
+        for (const [key, count] of Object.entries(state.inventory)) {
+            const parts = key.split('_');
+            const id = parts[0];
+            const type = parts[1];
+            const norm = state.inventory[id + '_normal'] || 0;
+            const foil = state.inventory[id + '_foil'] || 0;
+            const totalForThisCard = norm + foil;
+
+            const alreadyInTradeForThisCard = tradeState.myCards.filter(k => k.startsWith(id + '_')).length;
+            const alreadyInTradeForThisKey = tradeState.myCards.filter(k => k === key).length;
+
+            const maxTradeableForCard = Math.max(0, totalForThisCard - 1 - alreadyInTradeForThisCard);
+            const availableForKey = Math.min(count - alreadyInTradeForThisKey, maxTradeableForCard);
+
+            const card = CARDS_DB.find(c => c.id == id);
+            const isLastCopy = (totalForThisCard <= 1);
+
+            const opt = document.createElement('option');
+            opt.value = key;
+            opt.disabled = (availableForKey <= 0);
+            opt.textContent = card.icon + " " + card.name + " (" + card.rarity + (type === 'foil' ? ' ✨' : '') + ") " + (isLastCopy ? '[Dernier exemplaire]' : '[Dispo: ' + availableForKey + ']');
+            select.appendChild(opt);
+        }
+
+        if (select.options.length === 0) {
+            const opt = document.createElement('option');
+            opt.textContent = "Aucune carte dans l'inventaire";
+            select.appendChild(opt);
+        }
+    }
+
+    function addCardToMyTrade() {
+        if (tradeState.myLocked) {
+            showToast("🔒 Déverrouillez votre offre !");
+            return;
+        }
+        const select = document.getElementById('my-trade-card-select');
+        const key = select.value;
+        if (!key || !state.inventory[key]) return;
+
+        const parts = key.split('_');
+        const id = parts[0];
+        const norm = state.inventory[id + '_normal'] || 0;
+        const foil = state.inventory[id + '_foil'] || 0;
+        const alreadyInTrade = tradeState.myCards.filter(k => k.startsWith(id + '_')).length;
+
+        if ((norm + foil - alreadyInTrade) <= 1) {
+            showToast("❌ Impossible d'échanger la seule copie !");
+            return;
+        }
+
+        tradeState.myCards.push(key);
+        renderTradeUI();
+    }
+
+    function removeCardFromMyTrade(index) {
+        if (tradeState.myLocked) return;
+        tradeState.myCards.splice(index, 1);
+        renderTradeUI();
+    }
+
+    function toggleMyTradeLock() {
+        if (tradeState.myCards.length === 0) {
+            showToast("❌ Ajoutez au moins 1 carte.");
+            return;
+        }
+        tradeState.myLocked = !tradeState.myLocked;
+
+        if (tradeState.myLocked) {
+            tradeState.partnerCards = [];
+            tradeState.myCards.forEach(myKey => {
+                const parts = myKey.split('_');
+                const id = parts[0];
+                const type = parts[1];
+                const myCard = CARDS_DB.find(c => c.id == id);
+                const sameRarityPool = CARDS_DB.filter(c => c.rarity === myCard.rarity && c.id != myCard.id);
+                const pick = sameRarityPool[Math.floor(Math.random() * sameRarityPool.length)] || myCard;
+                tradeState.partnerCards.push(pick.id + "_" + type);
+            });
+            tradeState.partnerLocked = true;
+            showToast("🔒 Offre verrouillée ! Partenaire prêt.");
+        } else {
+            tradeState.partnerLocked = false;
+        }
+        renderTradeUI();
+    }
+
+    function executeSecureTrade() {
+        if (!tradeState.myLocked || !tradeState.partnerLocked) return;
+
+        tradeState.myCards.forEach(key => {
+            state.inventory[key]--;
+            if (state.inventory[key] <= 0) delete state.inventory[key];
+        });
+
+        tradeState.partnerCards.forEach(key => {
+            state.inventory[key] = (state.inventory[key] || 0) + 1;
+        });
+
+        state.missions.weeklyTraded++;
+
+        showToast("✅ Échange réussi !");
+        resetTrade();
+        saveGame();
+        updateUI();
+    }
+
+    function resetTrade() {
+        tradeState = { myCards: [], partnerCards: [], myLocked: false, partnerLocked: false };
+        renderTradeUI();
+    }
+
+    function renderTradeUI() {
+        const partnerName = document.getElementById('trade-partner-select').value;
+        document.getElementById('partner-name-label').textContent = partnerName;
+
+        const mySlots = document.getElementById('my-trade-slots');
+        mySlots.innerHTML = '';
+        tradeState.myCards.forEach((key, idx) => {
+            const parts = key.split('_');
+            const id = parts[0];
+            const type = parts[1];
+            const card = CARDS_DB.find(c => c.id == id);
+            const row = document.createElement('div');
+            row.className = 'trade-item-row';
+            
+            const span = document.createElement('span');
+            span.textContent = card.icon + " " + card.name + " (" + card.rarity + (type === 'foil' ? ' ✨' : '') + ")";
+            row.appendChild(span);
+
+            if (!tradeState.myLocked) {
+                const btnX = document.createElement('button');
+                btnX.style.background = 'none';
+                btnX.style.border = 'none';
+                btnX.style.color = '#ff4757';
+                btnX.style.cursor = 'pointer';
+                btnX.style.fontWeight = '900';
+                btnX.textContent = '✖';
+                btnX.addEventListener('click', () => removeCardFromMyTrade(idx));
+                row.appendChild(btnX);
+            } else {
+                const lockSpan = document.createElement('span');
+                lockSpan.textContent = '🔒';
+                row.appendChild(lockSpan);
+            }
+            mySlots.appendChild(row);
+        });
+
+        const partnerSlots = document.getElementById('partner-trade-slots');
+        partnerSlots.innerHTML = '';
+        tradeState.partnerCards.forEach(key => {
+            const parts = key.split('_');
+            const id = parts[0];
+            const type = parts[1];
+            const card = CARDS_DB.find(c => c.id == id);
+            const row = document.createElement('div');
+            row.className = 'trade-item-row';
+            row.innerHTML = 
+                '<span>' + card.icon + ' ' + card.name + ' (' + card.rarity + (type === 'foil' ? ' ✨' : '') + ')</span>' +
+                '<span>🔒</span>';
+            partnerSlots.appendChild(row);
+        });
+
+        document.getElementById('my-trade-box').classList.toggle('locked', tradeState.myLocked);
+        document.getElementById('partner-trade-box').classList.toggle('locked', tradeState.partnerLocked);
+
+        document.getElementById('my-lock-status').textContent = tradeState.myLocked ? "🔒 VERROUILLÉ" : "🔓 Non verrouillé";
+        document.getElementById('my-lock-status').style.color = tradeState.myLocked ? "#2ecc71" : "#ffeaa7";
+
+        document.getElementById('partner-lock-status').textContent = tradeState.partnerLocked ? "🔒 VERROUILLÉ" : "⏳ En attente...";
+        document.getElementById('partner-lock-status').style.color = tradeState.partnerLocked ? "#2ecc71" : "#9aa0b8";
+
+        document.getElementById('btn-lock-trade').textContent = tradeState.myLocked ? "🔓 Déverrouiller" : "🔒 Verrouiller";
+        document.getElementById('btn-confirm-trade').disabled = !(tradeState.myLocked && tradeState.partnerLocked);
+
+        populateTradeSelect();
+    }
+
+    function buyStandardBooster() {
+        if (state.boosters >= state.maxBoosterStock) {
+            showToast("⚠️ Stock de boosters maximum atteint (" + state.maxBoosterStock + ") !");
+            return;
+        }
+        if (state.ether < 100) {
+            showToast("❌ 100 Fragments requis.");
+            return;
+        }
+        state.ether -= 100;
+        state.boosters++;
+        if (state.boosters > state.maxBoosterStock) state.boosters = state.maxBoosterStock;
+        showToast("📦 +1 Booster ajouté !");
+        saveGame();
+        updateUI();
+    }
+
+    function upgradeMaxBoosters() {
+        if (state.ether < state.maxBoosterUpgradeCost) {
+            showToast("❌ " + state.maxBoosterUpgradeCost + " Fragments requis.");
+            return;
+        }
+        state.ether -= state.maxBoosterUpgradeCost;
+        state.maxBoosterStock += 5;
+        state.maxBoosterUpgradeCost = Math.round(state.maxBoosterUpgradeCost * 1.6);
+        showToast("📦 Capacité max de boosters augmentée à " + state.maxBoosterStock + " !");
+        saveGame();
+        updateUI();
+    }
+
+    function buyChromaticBooster() {
+        if (state.ether < 500) {
+            showToast("❌ 500 Fragments requis.");
+            return;
+        }
+        state.ether -= 500;
+        switchTab('open');
+        openBoosters(1, 'chromatic');
+        showToast("🌈 Booster Chromatique ouvert !");
+    }
+
+    function upgradeTimer() {
+        if (state.waitSecondsTotal <= 180) {
+            showToast("⚡ Upgrade Max atteint (3 min) !");
+            return;
+        }
+        if (state.ether < state.timerUpgradeCost) {
+            showToast("❌ " + state.timerUpgradeCost + " Fragments requis.");
+            return;
+        }
+        state.ether -= state.timerUpgradeCost;
+        state.waitSecondsTotal -= 30;
+        if (state.waitSecondsTotal < 180) state.waitSecondsTotal = 180;
+
+        if (state.secondsRemaining > state.waitSecondsTotal) state.secondsRemaining = state.waitSecondsTotal;
+        state.timerUpgradeCost = Math.round(state.timerUpgradeCost * 1.7);
+        showToast("⚡ Chrono réduit !");
+        saveGame();
+        updateUI();
+    }
+
+    function setTheme(themeName) {
+        state.theme = themeName;
+        applyAppearance();
+        saveGame();
+        showToast("🎬 Thème : " + themeName.toUpperCase());
+    }
+
+    function setTextColor(hex) {
+        state.textColor = hex;
+        applyAppearance();
+        saveGame();
+        showToast("🎨 Couleur de texte mise à jour !");
+    }
+
+    function setCardBorderColor(val) {
+        state.cardBorderColor = val;
+        applyAppearance();
+        renderCollection();
+        saveGame();
+        showToast("🎨 Rebords de cartes mis à jour !");
+    }
+
+    function applyAppearance() {
+        initParticlesForTheme(state.theme);
+        document.documentElement.style.setProperty('--text-main', state.textColor);
+
+        document.querySelectorAll('[id^="theme-card-"]').forEach(el => el.classList.remove('active-theme-card'));
+        const activeCard = document.getElementById('theme-card-' + state.theme);
+        if (activeCard) activeCard.classList.add('active-theme-card');
+    }
+
+    function switchTab(tabName) {
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+
+        const targetSec = document.getElementById('tab-' + tabName);
+        if (targetSec) targetSec.classList.add('active');
+
+        const targetBtn = document.querySelector('[data-tab="' + tabName + '"]');
+        if (targetBtn) targetBtn.classList.add('active');
+
+        if (tabName === 'collection') renderCollection();
+        if (tabName === 'missions') renderMissionsAndCalendar();
+        if (tabName === 'trade') renderTradeUI();
+    }
+
+    function updateUI() {
+        document.getElementById('ether-count').textContent = state.ether;
+        document.getElementById('wait-time-label').textContent = formatTime(state.waitSecondsTotal);
+
+        const btnUpg = document.getElementById('btn-upg-timer');
+        const infoUpg = document.getElementById('upg-timer-info');
+
+        infoUpg.textContent = "Actuel : " + formatTime(state.waitSecondsTotal);
+        if (state.waitSecondsTotal <= 180) {
+            btnUpg.textContent = "Upgrade Max";
+            btnUpg.disabled = true;
+        } else {
+            btnUpg.textContent = "Améliorer (" + state.timerUpgradeCost + " 💎)";
+            btnUpg.disabled = false;
+        }
+
+        const btnBuyStd = document.getElementById('btn-buy-standard');
+        if (btnBuyStd) {
+            if (state.boosters >= state.maxBoosterStock) {
+                btnBuyStd.textContent = "Max (" + state.maxBoosterStock + ")";
+                btnBuyStd.disabled = true;
+                btnBuyStd.style.opacity = "0.6";
+                btnBuyStd.style.cursor = "not-allowed";
+            } else {
+                btnBuyStd.textContent = "Acheter (100 💎)";
+                btnBuyStd.disabled = false;
+                btnBuyStd.style.opacity = "1";
+                btnBuyStd.style.cursor = "pointer";
+            }
+        }
+
+        const infoMax = document.getElementById('max-booster-info');
+        const btnUpgMax = document.getElementById('btn-upg-max-booster');
+        if (infoMax && btnUpgMax) {
+            infoMax.textContent = "Capacité actuelle : " + state.maxBoosterStock + " boosters";
+            btnUpgMax.textContent = "Améliorer (" + state.maxBoosterUpgradeCost + " 💎)";
+        }
+
+        updateTimerDisplay();
+        renderCollection();
+        renderMissionsAndCalendar();
+        renderTradeUI();
+    }
+
+    function showToast(msg) {
+        const toast = document.getElementById('toast');
+        toast.textContent = msg;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 3200);
+    }
+
+    // Event Listeners registration
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+        });
+
+        document.querySelectorAll('.pack-type-card').forEach(card => {
+            card.addEventListener('click', () => selectPackType(card.dataset.pack));
+        });
+
+        document.getElementById('pack-btn').addEventListener('click', () => openBoosters(1));
+        document.getElementById('btn-open-1').addEventListener('click', () => openBoosters(1));
+        document.getElementById('btn-open-5').addEventListener('click', () => openBoosters(5));
+        document.getElementById('btn-open-10').addEventListener('click', () => openBoosters(10));
+
+        document.getElementById('tear-pack-box').addEventListener('click', ripOpenPack);
+        document.getElementById('flip-card-box').addEventListener('click', handleCardStackClick);
+        document.getElementById('btn-skip-stack').addEventListener('click', skipRemainingStack);
+        document.getElementById('btn-continue-reveal').addEventListener('click', resetPackView);
+
+        document.getElementById('recycle-btn').addEventListener('click', recycleAllDuplicates);
+
+        document.querySelectorAll('#collection-filter-bar .filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => setCollectionFilter(btn.dataset.filter, btn));
+        });
+
+        document.getElementById('trade-partner-select').addEventListener('change', resetTrade);
+        document.getElementById('btn-add-trade').addEventListener('click', addCardToMyTrade);
+        document.getElementById('btn-lock-trade').addEventListener('click', toggleMyTradeLock);
+        document.getElementById('btn-confirm-trade').addEventListener('click', executeSecureTrade);
+        document.getElementById('btn-reset-trade').addEventListener('click', resetTrade);
+
+        document.getElementById('btn-buy-standard').addEventListener('click', buyStandardBooster);
+        document.getElementById('btn-buy-chromatic').addEventListener('click', buyChromaticBooster);
+        document.getElementById('btn-upg-timer').addEventListener('click', upgradeTimer);
+        document.getElementById('btn-upg-max-booster').addEventListener('click', upgradeMaxBoosters);
+
+        document.querySelectorAll('.theme-btn').forEach(btn => {
+            btn.addEventListener('click', () => setTheme(btn.dataset.theme));
+        });
+
+        document.querySelectorAll('.text-swatch').forEach(sw => {
+            sw.addEventListener('click', () => setTextColor(sw.dataset.color));
+        });
+
+        document.querySelectorAll('.border-swatch').forEach(sw => {
+            sw.addEventListener('click', () => setCardBorderColor(sw.dataset.border));
+        });
+
+            // --- ADMIN PANEL FUNCTIONS ---
+    function checkAdminAccess() {
+        const isAdmin = state.admins.some(a => a.discordId === state.currentUser.discordId);
+        const adminBtn = document.getElementById('nav-admin-btn');
+        if (adminBtn) {
+            adminBtn.style.display = isAdmin ? 'block' : 'none';
+        }
+        if (!isAdmin) {
+            // Si l'utilisateur perd ses droits et est sur l'onglet admin, le renvoyer sur les boosters
+            const adminSec = document.getElementById('tab-admin');
+            if (adminSec && adminSec.classList.contains('active')) {
+                switchTab('open');
+            }
+        }
+        renderAdminList();
+    }
+
+    function applyDiscordLogin() {
+        const nameInput = document.getElementById('admin-login-name').value.trim();
+        const idInput = document.getElementById('admin-login-id').value.trim();
+        if (!nameInput || !idInput) {
+            showToast("❌ Veuillez remplir le nom et l'ID Discord.");
+            return;
+        }
+        state.currentUser = { name: nameInput, discordId: idInput };
+        saveGame();
+                const textPicker = document.getElementById('native-text-color-picker');
+        if (textPicker) {
+            textPicker.value = state.textColor || '#f0f2f8';
+            textPicker.addEventListener('input', (e) => setTextColor(e.target.value));
+        }
+        const borderPicker = document.getElementById('native-border-color-picker');
+        if (borderPicker) {
+            if (state.cardBorderColor && state.cardBorderColor !== 'default') {
+                borderPicker.value = state.cardBorderColor;
+            }
+            borderPicker.addEventListener('input', (e) => setCardBorderColor(e.target.value));
+        }
+    checkAdminAccess();
+        showToast("✅ Identité mise à jour : " + nameInput + " (" + idInput + ")");
+    }
+
+    function addAdminToList() {
+        const nameInput = document.getElementById('new-admin-name').value.trim();
+        const idInput = document.getElementById('new-admin-id').value.trim();
+        if (!nameInput || !idInput) {
+            showToast("❌ Veuillez entrer un nom et un ID Discord valide.");
+            return;
+        }
+        if (state.admins.some(a => a.discordId === idInput)) {
+            showToast("⚠️ Cet ID Discord est déjà administrateur.");
+            return;
+        }
+        state.admins.push({ name: nameInput, discordId: idInput });
+        saveGame();
+        renderAdminList();
+        document.getElementById('new-admin-name').value = '';
+        document.getElementById('new-admin-id').value = '';
+        showToast("🛡️ Admin " + nameInput + " ajouté avec succès !");
+    }
+
+    function removeAdminFromList(discordId) {
+        if (state.admins.length <= 1) {
+            showToast("❌ Impossible de supprimer le dernier administrateur !");
+            return;
+        }
+        state.admins = state.admins.filter(a => a.discordId !== discordId);
+        saveGame();
+                const textPicker = document.getElementById('native-text-color-picker');
+        if (textPicker) {
+            textPicker.value = state.textColor || '#f0f2f8';
+            textPicker.addEventListener('input', (e) => setTextColor(e.target.value));
+        }
+        const borderPicker = document.getElementById('native-border-color-picker');
+        if (borderPicker) {
+            if (state.cardBorderColor && state.cardBorderColor !== 'default') {
+                borderPicker.value = state.cardBorderColor;
+            }
+            borderPicker.addEventListener('input', (e) => setCardBorderColor(e.target.value));
+        }
+    checkAdminAccess();
+        showToast("🗑️ Administrateur retiré.");
+    }
+
+    function renderAdminList() {
+        const container = document.getElementById('admin-list-container');
+        if (!container) return;
+        container.innerHTML = '';
+        state.admins.forEach(admin => {
+            const row = document.createElement('div');
+            row.className = 'trade-item-row';
+            row.innerHTML = '<span>🛡️ ' + admin.name + ' <small style="color:var(--text-muted);">(' + admin.discordId + ')</small></span>';
+            
+            if (admin.discordId !== "365656836747034624") {
+                const btnRem = document.createElement('button');
+                btnRem.style.background = 'none';
+                btnRem.style.border = 'none';
+                btnRem.style.color = '#ff4757';
+                btnRem.style.cursor = 'pointer';
+                btnRem.style.fontWeight = '900';
+                btnRem.textContent = '✖';
+                btnRem.addEventListener('click', () => removeAdminFromList(admin.discordId));
+                row.appendChild(btnRem);
+            }
+            container.appendChild(row);
+        });
+    }
+
+    function adminCheatGems() {
+        state.ether += 1000;
+        saveGame();
+        updateUI();
+        showToast("💎 [Admin] +1 000 Fragments ajoutés !");
+    }
+
+    function adminCheatBoosters() {
+        state.boosters = state.maxBoosterStock;
+        saveGame();
+        updateUI();
+        showToast("📦 [Admin] Stock de boosters rempli au maximum !");
+    }
+
+    function adminResetTimer() {
+        state.secondsRemaining = state.waitSecondsTotal;
+        saveGame();
+        updateTimerDisplay();
+        showToast("⏱️ [Admin] Timer réinitialisé !");
+    }
+            const textPicker = document.getElementById('native-text-color-picker');
+        if (textPicker) {
+            textPicker.value = state.textColor || '#f0f2f8';
+            textPicker.addEventListener('input', (e) => setTextColor(e.target.value));
+        }
+        const borderPicker = document.getElementById('native-border-color-picker');
+        if (borderPicker) {
+            if (state.cardBorderColor && state.cardBorderColor !== 'default') {
+                borderPicker.value = state.cardBorderColor;
+            }
+            borderPicker.addEventListener('input', (e) => setCardBorderColor(e.target.value));
+        }
+    checkAdminAccess();
+            document.getElementById('btn-apply-discord-login').addEventListener('click', applyDiscordLogin);
+        document.getElementById('btn-add-admin').addEventListener('click', addAdminToList);
+        document.getElementById('admin-add-gems').addEventListener('click', adminCheatGems);
+        document.getElementById('admin-add-boosters').addEventListener('click', adminCheatBoosters);
+        document.getElementById('admin-reset-timer').addEventListener('click', adminResetTimer);
+        loadGame();
+    });
+})();
+</script>
+</body>
+</html>
